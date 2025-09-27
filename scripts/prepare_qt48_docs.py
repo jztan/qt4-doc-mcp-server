@@ -371,7 +371,14 @@ def main(argv: list[str] | None = None) -> int:
         "--dest", default="qt4-docs-html", help="Destination docs dir/symlink"
     )
     ap.add_argument(
-        "--copy", action="store_true", help="Copy docs instead of creating a symlink"
+        "--copy",
+        action="store_true",
+        help="Copy docs instead of creating a symlink (default)",
+    )
+    ap.add_argument(
+        "--symlink",
+        action="store_true",
+        help="Attempt to symlink docs instead of copying (Unix/macOS)",
     )
     ap.add_argument("--env", default=".env", help="Path to .env to write")
     ap.add_argument(
@@ -412,15 +419,31 @@ def main(argv: list[str] | None = None) -> int:
         print(f"doc/html not found under {root}", file=sys.stderr)
         return 2
 
-    dest = stage_docs(doc_html, Path(args.dest), copy=args.copy)
+    # Default behavior: copy; allow opting into symlink with --symlink
+    copy_mode = True if not args.symlink else False
+    # Backward-compatible: if --copy explicitly provided, keep copy_mode True
+    if args.copy:
+        copy_mode = True
+    dest = stage_docs(doc_html, Path(args.dest), copy=copy_mode)
 
     # Copy LICENSE.FDL if present
     license_fdl = root / "LICENSE.FDL"
     try:
         if license_fdl.exists():
-            shutil.copy2(license_fdl, dest / "LICENSE.FDL")
-    except Exception:
-        pass
+            target = dest / "LICENSE.FDL"
+            shutil.copy2(license_fdl, target)
+            if not target.exists():
+                print(
+                    f"Warning: could not place LICENSE.FDL under {dest}. "
+                    f"Original is at {license_fdl}",
+                    file=sys.stderr,
+                )
+    except Exception as e:
+        print(
+            f"Warning: failed to copy LICENSE.FDL to {dest}: {e}. "
+            f"Original is at {license_fdl}",
+            file=sys.stderr,
+        )
 
     # Absolute QT_DOC_BASE path
     qt_doc_base = dest.resolve()

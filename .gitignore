@@ -13,4 +13,4 @@ build/
 *.egg-info/
 uv.lock
 .env
-qt-docs-html/
+qt4-docs-html/
