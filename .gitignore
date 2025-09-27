@@ -1,0 +1,16 @@
+.cache/
+.index/
+.work/
+*.sqlite
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+.venv/
+dist/
+build/
+*.egg-info/
+uv.lock
+.env
+qt-docs-html/
