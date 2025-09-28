@@ -31,7 +31,7 @@ jobs:
         run: |
           uv venv
           source .venv/bin/activate
-          uv pip install -e .[dev]
+          uv pip install -e .[dev,convert]
       - name: Run tests
         run: |
           source .venv/bin/activate
