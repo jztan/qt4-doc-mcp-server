@@ -1,5 +1,11 @@
 # Qt 4.8.4 Documentation MCP Server
 
+[![PyPI Version](https://img.shields.io/pypi/v/qt4-doc-mcp-server.svg)](https://pypi.org/project/qt4-doc-mcp-server/)
+[![License](https://img.shields.io/github/license/jztan/qt4-doc-mcp-server.svg)](LICENSE)
+[![Python Version](https://img.shields.io/pypi/pyversions/qt4-doc-mcp-server.svg)](https://pypi.org/project/qt4-doc-mcp-server/)
+[![GitHub Issues](https://img.shields.io/github/issues/jztan/qt4-doc-mcp-server.svg)](https://github.com/jztan/qt4-doc-mcp-server/issues)
+[![CI](https://github.com/jztan/qt4-doc-mcp-server/actions/workflows/pr-tests.yml/badge.svg)](https://github.com/jztan/qt4-doc-mcp-server/actions/workflows/pr-tests.yml)
+
 Offline‑only MCP Server that serves Qt 4.8.4 documentation to Agents/LLMs and IDEs.
 It loads local HTML docs, converts pages to Markdown, and provides fast full‑text
 search via SQLite FTS5.
@@ -22,14 +28,14 @@ search via SQLite FTS5.
 │     ├─ __init__.py            # Package version
 │     ├─ main.py                # FastMCP app (+ /health) and CLI run()
 │     ├─ config.py              # Env loader (dotenv) + startup checks
-│     ├─ tools.py               # MCP tools (to be wired: read/search)
+│     ├─ tools.py               # MCP tools (read_documentation now, search planned)
 │     ├─ fetcher.py             # Canonical URL + local path mapping
 │     ├─ convert.py             # HTML extraction, link normalization, HTML→Markdown
 │     ├─ cache.py               # LRU + Markdown store (disk) helpers
 │     ├─ doc_service.py         # Read path orchestration (store + convert)
 │     ├─ search.py              # FTS5 index build/query stubs
 │     └─ cli.py                 # Warm‑MD CLI entry (qt4-doc-warm-md)
-└─ tests/                       # (planned) unit/integration tests
+└─ tests/                       # pytest suite (e.g., test_doc_service.py)
 ```
 
 ## Requirements
@@ -87,6 +93,9 @@ curl -s http://127.0.0.1:8000/health
  
 # Optional: preconvert all HTML→Markdown into the store for faster reads
 uv run qt4-doc-warm-md
+
+# Run tests (ensure TMPDIR points to a writable location when sandboxed)
+uv run python -m pytest -q
 ```
 
 ## How It Works (high‑level)
@@ -108,7 +117,3 @@ uv run qt4-doc-warm-md
   converts locally obtained docs and includes attribution in outputs. If you
   redistribute a local mirror, include `LICENSE.FDL` and preserve notices.
 - See `THIRD_PARTY_NOTICES.md` for more.
-
-## Status
-This repo currently contains the specification, design, tasks, and initial
-scaffold. Implementation proceeds per TASKS.md.
