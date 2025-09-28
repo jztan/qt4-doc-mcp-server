@@ -7,15 +7,25 @@ from __future__ import annotations
 
 import logging
 import os
+
+if __package__ in (None, ""):
+    # Allow running this module as a script (python path fix)
+    import sys
+    from pathlib import Path
+
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    __package__ = "qt4_doc_mcp_server"
+
 from dotenv import load_dotenv
-from mcp.server.fastmcp import FastMCP
+
 from .config import load_settings, ensure_dirs, validate_settings, probe_fts5
+from .server import ensure_tools_loaded, mcp
 
 
 logger = logging.getLogger(__name__)
 
-# Initialize FastMCP application
-mcp = FastMCP("qt4_doc_mcp_server")
+# Ensure MCP tools are registered even when imported via alternate entry points.
+ensure_tools_loaded()
 
 
 @mcp.custom_route("/health", methods=["GET"])
@@ -74,9 +84,15 @@ def run() -> None:
         mcp.settings.port,
     )
 
+    try:
+        registered = list(getattr(mcp._tool_manager, "_tools", {}).keys())
+        logger.info("Registered MCP tools: %s", registered)
+    except Exception as exc:  # pragma: no cover
+        logger.debug("Unable to introspect tool registry: %s", exc)
+
     mcp.run(transport="streamable-http")
 
 
 if __name__ == "__main__":
-    # Allow running via: `PYTHONPATH=src python -m qt4_doc_mcp_server.main`
+    # Allow running via: `python src/qt4_doc_mcp_server/main.py`
     run()
