@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 
 from .config import load_settings, ensure_dirs, validate_settings, probe_fts5
 from .server import ensure_tools_loaded, mcp
+from .tools import configure_from_settings
 
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,8 @@ def run() -> None:
     if not ok:
         logger.error("Startup validation failed; fix settings and retry.")
         raise SystemExit(2)
+
+    configure_from_settings(settings)
 
     # Probe FTS5 and warn if unavailable
     if not probe_fts5():

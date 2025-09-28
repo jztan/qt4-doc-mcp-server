@@ -49,8 +49,8 @@ def warm_md_main(argv: list[str] | None = None) -> int:
         rel = f.relative_to(root).as_posix()
         url = BASE_CANONICAL + rel
         try:
-            _title, md, _links = get_markdown_for_url(url, settings, None)
-            total_md += len(md)
+            doc = get_markdown_for_url(url, settings, None)
+            total_md += len(doc.markdown)
         except Exception as e:
             print(f"\nError converting {rel}: {e}", file=sys.stderr)
         # progress
@@ -71,4 +71,3 @@ def warm_md_main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(warm_md_main())
-
