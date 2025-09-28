@@ -10,7 +10,13 @@ Offline‑only MCP Server that serves Qt 4.8.4 documentation to Agents/LLMs and 
 It loads local HTML docs, converts pages to Markdown, and provides fast full‑text
 search via SQLite FTS5.
 
- 
+## Quickstart
+1. Install the package with conversion extras: `pip install qt4-doc-mcp-server[convert]`.
+2. Fetch and stage the Qt docs (one-time): `python scripts/prepare_qt48_docs.py --segments 4`.
+3. Copy `.env` from the script output or create one manually (see table below).
+4. Run the server: `qt4-doc-mcp-server` (or `uv run python -m qt4_doc_mcp_server.main`).
+5. Verify health: `curl -s http://127.0.0.1:8000/health` → `{ "status": "ok" }`.
+6. Optional: warm the Markdown cache for faster responses: `qt4-doc-warm-md`.
 
 ## Project Structure
 
@@ -63,19 +69,19 @@ This will:
 
 
 ## Configure (dotenv)
-Create a `.env` file in the repo (defaults shown):
+Create a `.env` file in the repo root. The helper script writes sensible defaults; adjust as needed:
 
-```
-QT_DOC_BASE=/absolute/path/to/qt-everywhere-opensource-src-4.8.4/doc/html
-INDEX_DB_PATH=.index/fts.sqlite
-MD_CACHE_DIR=.cache/md
-PREINDEX_DOCS=true
-PRECONVERT_MD=true
-SERVER_HOST=127.0.0.1
-SERVER_PORT=8000
-MCP_LOG_LEVEL=WARNING
-MD_CACHE_SIZE=512
-```
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `QT_DOC_BASE` | _required_ | Absolute path to the Qt 4.8.4 HTML docs (`.../doc/html`). |
+| `INDEX_DB_PATH` | `.index/fts.sqlite` | Location of the future FTS5 index (safe to leave as-is today). |
+| `MD_CACHE_DIR` | `.cache/md` | Directory for cached Markdown blobs + metadata. |
+| `PREINDEX_DOCS` | `true` | Reserved for search; keep `true` so indexing runs once implemented. |
+| `PRECONVERT_MD` | `true` | Warm the Markdown cache automatically at startup. |
+| `SERVER_HOST` | `127.0.0.1` | Bind address for the FastMCP server (`0.0.0.0` for containers). |
+| `SERVER_PORT` | `8000` | TCP port for streamable HTTP transport. |
+| `MCP_LOG_LEVEL` | `WARNING` | Logging verbosity (DEBUG/INFO/WARNING/ERROR). |
+| `MD_CACHE_SIZE` | `512` | In-memory CachedDoc LRU capacity (counts pages). |
 
 ## Dev Setup and Run
 ```
@@ -85,8 +91,8 @@ uv venv .venv && source .venv/bin/activate
 # Using uv to run the module directly
 uv run python -m qt4_doc_mcp_server.main
 
-# Option 2: install and use the CLI
-uv pip install -e .[dev]
+# Option 2: install and use the CLI (include conversion deps)
+uv pip install -e .[dev,convert]
 qt4-doc-mcp-server
 # Health check
 curl -s http://127.0.0.1:8000/health
@@ -96,6 +102,7 @@ uv run qt4-doc-warm-md
 
 # Run tests (ensure TMPDIR points to a writable location when sandboxed)
 uv run python -m pytest -q
+# Tests expect the conversion extras (BeautifulSoup/markdownify) to be installed
 ```
 
 ## How It Works (high‑level)
@@ -104,12 +111,47 @@ uv run python -m pytest -q
   attribution appended.
 - Markdown store: preconverted pages saved under `.cache/md` (sharded by URL hash)
   for fast reads; in‑memory LRU caches hot pages.
-- Search: SQLite FTS5 index (title/headings/body) with bm25 ranking and snippets.
+- Search (planned): SQLite FTS5 index (title/headings/body) with bm25 ranking and snippets.
 
-## Docker (concept)
-- Mount local docs at `/docs` and optional volumes for index and MD store.
-- Set envs: `QT_DOC_BASE=/docs`, `INDEX_DB_PATH=/data/index/fts.sqlite`,
-  `MD_CACHE_DIR=/data/md`, `PREINDEX_DOCS=true`, `PRECONVERT_MD=true`.
+## MCP Tool Example
+Example MCP request/response for `read_documentation` (trimmed for brevity):
+
+```json
+// request
+{
+  "method": "tools/run",
+  "params": {
+    "name": "read_documentation",
+    "arguments": {
+      "url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
+      "fragment": "#details",
+      "section_only": true,
+      "max_length": 2000
+    }
+  }
+}
+
+// response
+{
+  "result": {
+    "title": "QString Class",
+    "canonical_url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
+    "markdown": "# QString Class\n...",
+    "links": [
+      {"text": "QStringList", "url": "https://doc.qt.io/archives/qt-4.8/qstringlist.html"}
+    ],
+    "attribution": "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3"
+  }
+}
+```
+
+## Deployment
+- **Direct (systemd, bare metal, CI runners):**
+  - Install with `pip install qt4-doc-mcp-server[convert]`.
+  - Ensure `.env` points to your Qt docs and writable cache/index directories.
+  - Start with `qt4-doc-mcp-server`; add `PRECONVERT_MD=true` for faster first reads.
+- **Containerization (roadmap):**
+  - Docker support is planned; follow the repository for updates or open an issue if you need it sooner.
 
 ## Licensing
 - Code: MIT License (see `LICENSE`).
