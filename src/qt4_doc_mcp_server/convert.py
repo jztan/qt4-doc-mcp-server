@@ -8,6 +8,9 @@ from __future__ import annotations
 from typing import TypedDict, List
 from urllib.parse import urljoin, urlparse
 
+from .errors import DocumentationError
+from .fetcher import canonicalize_url
+
 try:
     from bs4 import BeautifulSoup
 except Exception:  # pragma: no cover - optional dep
@@ -80,7 +83,6 @@ def normalize_links(root, canonical_url: str) -> List[dict]:
     links: List[dict] = []
     if root is None or BeautifulSoup is None:
         return links
-    parsed_base = urlparse(canonical_url)
     for a in root.find_all("a"):
         href = a.get("href")
         if not href:
@@ -91,11 +93,25 @@ def normalize_links(root, canonical_url: str) -> List[dict]:
             continue
         abs_url = urljoin(canonical_url, href)
         parsed = urlparse(abs_url)
-        # Keep as absolute; rewrite only if internal doc.qt.io link
-        if parsed.netloc.lower() == "doc.qt.io" and parsed.path.startswith("/archives/qt-4.8/"):
-            a["href"] = abs_url
-        # Collect
-        links.append({"text": a.get_text(strip=True), "url": a.get("href", abs_url)})
+        link_url = abs_url
+        if (
+            parsed.netloc
+            and parsed.netloc.lower() == "doc.qt.io"
+            and parsed.path.startswith("/archives/qt-4.8/")
+        ):
+            try:
+                link_url = canonicalize_url(abs_url)
+            except DocumentationError:
+                link_url = abs_url
+            a["href"] = link_url
+        elif not parsed.netloc and not parsed.scheme:
+            # Relative path that urljoin could not normalize; keep absolute form
+            link_url = abs_url
+            a["href"] = link_url
+        else:
+            link_url = abs_url
+        # Collect normalized link target (always absolute when possible)
+        links.append({"text": a.get_text(strip=True), "url": link_url})
     return links
 
 
@@ -137,4 +153,3 @@ def to_markdown(root) -> str:
         return markdownify.markdownify(str(root), heading_style="ATX")
     except Exception:  # pragma: no cover - optional dep fallback
         return _to_markdown_fallback(root)
-
