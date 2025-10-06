@@ -11,7 +11,7 @@ It loads local HTML docs, converts pages to Markdown, and provides fast full‑t
 search via SQLite FTS5.
 
 ## Quickstart
-1. Install the package with conversion extras: `pip install qt4-doc-mcp-server[convert]`.
+1. Install the package: `pip install qt4-doc-mcp-server`.
 2. Fetch and stage the Qt docs (one-time): `python scripts/prepare_qt48_docs.py --segments 4`.
 3. Copy `.env` from the script output or create one manually (see table below).
 4. Run the server: `qt4-doc-mcp-server` (or `uv run python -m qt4_doc_mcp_server.main`).
@@ -91,18 +91,17 @@ uv venv .venv && source .venv/bin/activate
 # Using uv to run the module directly
 uv run python -m qt4_doc_mcp_server.main
 
-# Option 2: install and use the CLI (include conversion deps)
-uv pip install -e .[dev,convert]
+# Option 2: install and use the CLI
+uv pip install -e .[dev]
 qt4-doc-mcp-server
 # Health check
 curl -s http://127.0.0.1:8000/health
- 
+
 # Optional: preconvert all HTML→Markdown into the store for faster reads
 uv run qt4-doc-warm-md
 
 # Run tests (ensure TMPDIR points to a writable location when sandboxed)
 uv run python -m pytest -q
-# Tests expect the conversion extras (BeautifulSoup/markdownify) to be installed
 ```
 
 ## How It Works (high‑level)
@@ -147,7 +146,7 @@ Example MCP request/response for `read_documentation` (trimmed for brevity):
 
 ## Deployment
 - **Direct (systemd, bare metal, CI runners):**
-  - Install with `pip install qt4-doc-mcp-server[convert]`.
+  - Install with `pip install qt4-doc-mcp-server`.
   - Ensure `.env` points to your Qt docs and writable cache/index directories.
   - Start with `qt4-doc-mcp-server`; add `PRECONVERT_MD=true` for faster first reads.
 - **Containerization (roadmap):**
