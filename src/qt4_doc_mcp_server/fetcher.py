@@ -49,7 +49,7 @@ def url_to_path(canonical_url: str, base: Path) -> Path:
     except ValueError as exc:
         raise NotAllowedError("Path traversal attempt detected") from exc
     # Convert to local path (handles Windows/Unix differences)
-    resolved = (base / Path(safe)).resolve()
+    resolved = (base / Path(str(safe))).resolve()
     try:
         resolved.relative_to(base.resolve())
     except ValueError as exc:  # pragma: no cover - safety guard
