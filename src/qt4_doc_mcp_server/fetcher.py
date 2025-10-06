@@ -1,9 +1,10 @@
 """Offline fetcher utilities: canonical URL validation and path mapping."""
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
 import os
+import posixpath
 
 from .errors import FetchError, InvalidURLError, NotAllowedError, NotFoundError
 
@@ -23,7 +24,7 @@ def canonicalize_url(url: str) -> str:
     if not u.path.startswith(ARCHIVE_PREFIX):
         raise NotAllowedError("URL not under Qt 4.8 archive path")
     # Normalize path: collapse duplicate slashes, etc.
-    path = os.path.normpath(u.path)
+    path = posixpath.normpath(u.path)
     if not path.startswith(ARCHIVE_PREFIX.rstrip("/")):
         raise NotAllowedError("Normalized path escaped archive prefix")
     # Rebuild URL with normalized parts, preserve query/fragment
@@ -41,9 +42,14 @@ def url_to_path(canonical_url: str, base: Path) -> Path:
     """Map a canonical URL to a local file path under QT_DOC_BASE."""
     u = urlparse(canonical_url)
     rel = u.path[len(ARCHIVE_PREFIX) :].lstrip("/")
-    # Prevent traversal
-    safe = Path("/" + rel).resolve().relative_to("/")
-    resolved = (base / safe).resolve()
+    # Prevent traversal using PurePosixPath (platform-independent)
+    posix_path = PurePosixPath("/" + rel)
+    try:
+        safe = posix_path.relative_to("/")
+    except ValueError as exc:
+        raise NotAllowedError("Path traversal attempt detected") from exc
+    # Convert to local path (handles Windows/Unix differences)
+    resolved = (base / Path(safe)).resolve()
     try:
         resolved.relative_to(base.resolve())
     except ValueError as exc:  # pragma: no cover - safety guard
