@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
 ## [Unreleased]
+
+## [0.4.0] - 2025-10-08
 ### Added
 - `DEFAULT_MAX_MARKDOWN_LENGTH` configuration setting (default: 20000 characters) to prevent response token limit issues
 - `content_info` field in `read_documentation` responses showing pagination metadata when content is truncated
