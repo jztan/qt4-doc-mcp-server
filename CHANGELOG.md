@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+## [0.4.0] - 2025-10-08
+### Added
+- `DEFAULT_MAX_MARKDOWN_LENGTH` configuration setting (default: 20000 characters) to prevent response token limit issues
+- `content_info` field in `read_documentation` responses showing pagination metadata when content is truncated
+- Automatic application of default max length when `max_length` parameter is not explicitly provided
+
+### Changed
+- `read_documentation` now defaults to returning max 20,000 characters to avoid exceeding LLM token limits (e.g., Claude's 25,000 token limit)
+- Enhanced docstring for `read_documentation` tool with detailed parameter and return value documentation
+
 ## [0.3.0] - 2025-10-06
 ### Fixed
 - Windows compatibility: Use `posixpath.normpath()` for URL path normalization instead of `os.path.normpath()`
