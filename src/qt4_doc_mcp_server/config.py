@@ -25,6 +25,7 @@ class Settings:
     preconvert_md: bool = True
     md_cache_size: int = 512
     mcp_log_level: str = "WARNING"
+    default_max_markdown_length: int = 20000
 
 
 def load_settings() -> Settings:
@@ -53,6 +54,7 @@ def load_settings() -> Settings:
     s.preconvert_md = os.getenv("PRECONVERT_MD", str(s.preconvert_md)).lower() == "true"
     s.md_cache_size = int(os.getenv("MD_CACHE_SIZE", str(s.md_cache_size)))
     s.mcp_log_level = os.getenv("MCP_LOG_LEVEL", s.mcp_log_level)
+    s.default_max_markdown_length = int(os.getenv("DEFAULT_MAX_MARKDOWN_LENGTH", str(s.default_max_markdown_length)))
     return s
 
 

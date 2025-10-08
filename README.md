@@ -82,6 +82,7 @@ Create a `.env` file in the repo root. The helper script writes sensible default
 | `SERVER_PORT` | `8000` | TCP port for streamable HTTP transport. |
 | `MCP_LOG_LEVEL` | `WARNING` | Logging verbosity (DEBUG/INFO/WARNING/ERROR). |
 | `MD_CACHE_SIZE` | `512` | In-memory CachedDoc LRU capacity (counts pages). |
+| `DEFAULT_MAX_MARKDOWN_LENGTH` | `20000` | Default maximum characters returned per request (prevents token limit issues). |
 
 ## Dev Setup and Run
 ```
@@ -139,10 +140,18 @@ Example MCP request/response for `read_documentation` (trimmed for brevity):
     "links": [
       {"text": "QStringList", "url": "https://doc.qt.io/archives/qt-4.8/qstringlist.html"}
     ],
-    "attribution": "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3"
+    "attribution": "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3",
+    "content_info": {
+      "total_length": 15234,
+      "returned_length": 2000,
+      "start_index": 0,
+      "truncated": true
+    }
   }
 }
 ```
+
+**Note**: The `content_info` field appears when content is paginated or truncated. Use `start_index` and `max_length` parameters to retrieve additional pages. By default, responses are limited to 20,000 characters to avoid exceeding LLM token limits.
 
 ## Deployment
 - **Direct (systemd, bare metal, CI runners):**
