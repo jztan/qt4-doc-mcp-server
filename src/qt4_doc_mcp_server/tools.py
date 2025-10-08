@@ -46,14 +46,20 @@ def _get_lru() -> LRUCache:
 
 def _format_result(doc: CachedDoc, url: str, *, start_index: int | None, max_length: int | None) -> dict:
     markdown = doc.markdown
+    total_length = len(markdown)
+    truncated = False
+    
     if start_index is not None or max_length is not None:
         start = max(0, start_index or 0)
         if max_length is not None and max_length >= 0:
             markdown = markdown[start : start + max_length]
+            truncated = (start + max_length) < total_length
         else:
             markdown = markdown[start:]
+            truncated = start > 0
+    
     clean_attr = "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3"
-    return {
+    result = {
         "title": doc.title,
         "url": url,
         "canonical_url": doc.canonical_url,
@@ -61,6 +67,17 @@ def _format_result(doc: CachedDoc, url: str, *, start_index: int | None, max_len
         "attribution": clean_attr,
         "links": [dict(link) for link in doc.links],
     }
+    
+    # Add pagination metadata when content is truncated
+    if truncated or start_index is not None or max_length is not None:
+        result["content_info"] = {
+            "total_length": total_length,
+            "returned_length": len(markdown),
+            "start_index": start_index or 0,
+            "truncated": truncated,
+        }
+    
+    return result
 
 
 @mcp.tool()
@@ -71,7 +88,18 @@ async def read_documentation(
     start_index: int | None = None,
     max_length: int | None = None,
 ) -> dict:
-    """Fetch a Qt 4.8.4 docs page and return Markdown."""
+    """Fetch a Qt 4.8.4 docs page and return Markdown.
+    
+    Args:
+        url: Qt documentation URL
+        fragment: Optional HTML fragment (e.g., '#details')
+        section_only: If True with fragment, return only that section
+        start_index: Character offset to start from (for pagination)
+        max_length: Maximum characters to return (defaults to configured limit)
+    
+    Returns:
+        Dictionary with title, url, markdown, links, and pagination info
+    """
     settings = _get_settings()
     lru = _get_lru()
 
@@ -92,4 +120,9 @@ async def read_documentation(
         err = FetchError(f"Unexpected error: {exc}")
         raise ToolError(err.tool_message()) from exc
 
-    return _format_result(doc, url, start_index=start_index, max_length=max_length)
+    # Apply default max_length if not explicitly provided
+    effective_max_length = max_length
+    if effective_max_length is None:
+        effective_max_length = settings.default_max_markdown_length
+
+    return _format_result(doc, url, start_index=start_index, max_length=effective_max_length)
