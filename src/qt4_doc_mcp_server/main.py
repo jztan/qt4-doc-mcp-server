@@ -74,6 +74,22 @@ def run() -> None:
         except Exception as e:
             logger.warning("Markdown preconversion failed: %s", e)
 
+    # Optionally build search index at startup
+    if settings.preindex_docs:
+        try:
+            from .cli import build_index_main
+
+            logger.info("PREINDEX_DOCS=true: building search index before start...")
+            # Only build if index doesn't exist
+            if not settings.index_db_path.exists():
+                rc = build_index_main([])
+                if rc != 0:
+                    logger.warning("Index build exited with code %s", rc)
+            else:
+                logger.info("Search index already exists at %s", settings.index_db_path)
+        except Exception as e:
+            logger.warning("Index build failed: %s", e)
+
     # Configure FastMCP settings
     mcp.settings.host = settings.server_host
     mcp.settings.port = settings.server_port
