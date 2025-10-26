@@ -6,21 +6,16 @@
 [![GitHub Issues](https://img.shields.io/github/issues/jztan/qt4-doc-mcp-server.svg)](https://github.com/jztan/qt4-doc-mcp-server/issues)
 [![CI](https://github.com/jztan/qt4-doc-mcp-server/actions/workflows/pr-tests.yml/badge.svg)](https://github.com/jztan/qt4-doc-mcp-server/actions/workflows/pr-tests.yml)
 
-Offline‑only MCP Server that serves Qt 4.8.4 documentation to Agents/LLMs and IDEs.
-It loads local HTML docs, converts pages to Markdown, and provides fast full‑text
-search via SQLite FTS5.
+Bring Qt 4.8.4 documentation to your AI coding assistant. Works offline with local docs.
 
 ## [Tool Reference](./docs/TOOL_REFERENCE.md) | [Changelog](./CHANGELOG.md) | [Contributing](./docs/CONTRIBUTING.md) | [Troubleshooting](./docs/TROUBLESHOOTING.md)
 
 ## ✨ Features
-- 🔌 **Offline-First** - No internet required; works with local Qt 4.8.4 docs
-- 📄 **HTML→Markdown Conversion** - Clean, formatted documentation for LLMs
-- 🔍 **Full-Text Search** - SQLite FTS5 with BM25 ranking and context snippets
-- ⚡ **Two-Tier Caching** - In-memory LRU + disk store for fast responses
-- 🎯 **Fragment Support** - Extract specific sections with `#fragment` syntax
-- 📊 **Pagination** - Automatic chunking to prevent token limit issues
-- 🛠️ **MCP Compliant** - Standard Model Context Protocol implementation
-- 🐳 **Docker Ready** - Container deployment support (planned)
+- 🔌 **Offline-First** - Works entirely with local documentation
+- 🔍 **Full-Text Search** - Find what you need across all Qt docs
+- ⚡ **Smart Caching** - Fast responses for repeated queries
+- 🎯 **Fragment Support** - Extract specific sections when needed
+- 🛠️ **MCP Standard** - Compatible with Claude, VS Code, and other MCP clients
 
 ## 📦 Prerequisites
 - **Python 3.11+** required
