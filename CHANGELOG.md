@@ -6,6 +6,29 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-10-26
+### Added
+- SQLite FTS5 full-text search functionality with BM25 ranking and context snippets
+- `search_documentation` MCP tool for searching across all Qt 4.8.4 documentation
+- `qt4-doc-build-index` CLI command for building the search index
+- `PREINDEX_DOCS` configuration option to automatically build search index at startup
+- Comprehensive MCP client configuration guide in README (VS Code, Claude Code, Codex CLI, Kiro)
+- Search index metadata persistence and deterministic build process
+- Progress tracking with ETA for index building
+- 14 new test cases for search functionality (total: 22 tests)
+
+### Changed
+- Updated `mcp[cli]` dependency: 1.14.1 → 1.19.0
+- Updated `uvicorn` dependency: 0.30 → 0.38.0
+- Updated `python-dotenv` dependency: 1.0 → 1.1.1
+- Updated `beautifulsoup4` dependency: 4.12.0 → 4.14.0
+- Updated `markdownify` dependency: 0.11.0 → 1.2.0 (major version)
+- Updated `lxml` dependency: 4.9.0 → 6.0.0 (major version)
+- Added `pytest-asyncio` to dev dependencies
+
+### Fixed
+- (none)
+
 ## [0.4.0] - 2025-10-08
 ### Added
 - `DEFAULT_MAX_MARKDOWN_LENGTH` configuration setting (default: 20000 characters) to prevent response token limit issues
