@@ -16,6 +16,7 @@ from .errors import (
     FetchError,
     TimeoutDocumentationError,
 )
+from .search import search, SearchUnavailable, IndexError as SearchIndexError
 
 
 _settings: Settings | None = None
@@ -126,3 +127,69 @@ async def read_documentation(
         effective_max_length = settings.default_max_markdown_length
 
     return _format_result(doc, url, start_index=start_index, max_length=effective_max_length)
+
+
+@mcp.tool()
+async def search_documentation(
+    query: str,
+    limit: int = 10,
+    scope: str = "all",
+) -> dict:
+    """Search Qt 4.8.4 documentation for relevant pages.
+
+    Args:
+        query: Search terms (FTS5 query syntax supported)
+        limit: Maximum number of results to return (default: 10, max: 50)
+        scope: Search scope - 'all', 'api', or 'guides' (currently 'all' only)
+
+    Returns:
+        Dictionary with results array containing title, url, score, and context snippet
+    """
+    settings = _get_settings()
+
+    # Validate and clamp limit
+    if limit < 1:
+        limit = 10
+    elif limit > 50:
+        limit = 50
+
+    # Validate scope (currently only 'all' is implemented)
+    if scope not in ("all", "api", "guides"):
+        raise ToolError(f"Invalid scope '{scope}'. Must be one of: all, api, guides")
+
+    if scope != "all":
+        raise ToolError("Only scope='all' is currently supported")
+
+    try:
+        results = search(
+            db_path=settings.index_db_path,
+            query=query,
+            limit=limit,
+            scope=scope,
+        )
+
+        return {
+            "results": [
+                {
+                    "title": r.title,
+                    "url": r.url,
+                    "score": r.score,
+                    "context": r.context,
+                }
+                for r in results
+            ],
+            "query": query,
+            "count": len(results),
+        }
+
+    except SearchUnavailable as exc:
+        raise ToolError(
+            f"Search index not available: {exc}. "
+            "Run 'qt4-doc-build-index' to build the index."
+        ) from exc
+    except SearchIndexError as exc:
+        raise ToolError(f"Search error: {exc}") from exc
+    except DocumentationError as exc:
+        raise ToolError(exc.tool_message()) from exc
+    except Exception as exc:  # pragma: no cover - unexpected failure
+        raise ToolError(f"Unexpected search error: {exc}") from exc
