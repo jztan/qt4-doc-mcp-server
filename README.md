@@ -10,66 +10,81 @@ Offline‑only MCP Server that serves Qt 4.8.4 documentation to Agents/LLMs and 
 It loads local HTML docs, converts pages to Markdown, and provides fast full‑text
 search via SQLite FTS5.
 
-## Quickstart
-1. Install the package: `pip install qt4-doc-mcp-server`.
-2. Fetch and stage the Qt docs (one-time): `python scripts/prepare_qt48_docs.py --segments 4`.
-3. Copy `.env` from the script output or create one manually (see table below).
-4. Build the search index: `qt4-doc-build-index` (required for search functionality).
-5. Run the server: `qt4-doc-mcp-server` (or `uv run python -m qt4_doc_mcp_server.main`).
-6. Verify health: `curl -s http://127.0.0.1:8000/health` → `{ "status": "ok" }`.
-7. Optional: warm the Markdown cache for faster responses: `qt4-doc-warm-md`.
+## 📋 Table of Contents
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Available Tools](#available-tools)
+- [MCP Client Setup](#mcp-client-setup)
+- [Usage Examples](#usage-examples)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Project Structure
+## ✨ Features
+- 🔌 **Offline-First** - No internet required; works with local Qt 4.8.4 docs
+- 📄 **HTML→Markdown Conversion** - Clean, formatted documentation for LLMs
+- 🔍 **Full-Text Search** - SQLite FTS5 with BM25 ranking and context snippets
+- ⚡ **Two-Tier Caching** - In-memory LRU + disk store for fast responses
+- 🎯 **Fragment Support** - Extract specific sections with `#fragment` syntax
+- 📊 **Pagination** - Automatic chunking to prevent token limit issues
+- 🛠️ **MCP Compliant** - Standard Model Context Protocol implementation
+- 🐳 **Docker Ready** - Container deployment support (planned)
 
-```
-.
-├─ README.md                    # Quick start, config, licensing
-├─ LICENSE                      # MIT license for this codebase
-├─ CHANGELOG.md                 # Keep a Changelog (Unreleased + releases)
-├─ THIRD_PARTY_NOTICES.md       # Qt docs and deps licensing notes
-├─ pyproject.toml               # Packaging, deps, console entry points
-├─ scripts/
-│  ├─ prepare_qt48_docs.py      # Download, extract, and stage Qt 4.8.4 docs; writes .env
-├─ src/
-│  └─ qt4_doc_mcp_server/
-│     ├─ __init__.py            # Package version
-│     ├─ main.py                # FastMCP app (+ /health) and CLI run()
-│     ├─ config.py              # Env loader (dotenv) + startup checks
-│     ├─ tools.py               # MCP tools (read_documentation, search_documentation)
-│     ├─ fetcher.py             # Canonical URL + local path mapping
-│     ├─ convert.py             # HTML extraction, link normalization, HTML→Markdown
-│     ├─ cache.py               # LRU + Markdown store (disk) helpers
-│     ├─ doc_service.py         # Read path orchestration (store + convert)
-│     ├─ search.py              # FTS5 index build/query with BM25 ranking
-│     └─ cli.py                 # CLI utilities (qt4-doc-warm-md, qt4-doc-build-index)
-└─ tests/                       # pytest suite (e.g., test_doc_service.py)
-```
+## 📦 Prerequisites
+- **Python 3.11+** required
+- **Qt 4.8.4 HTML Documentation**
+  - Download automatically via included script, or
+  - Manual download from qt.io archives
+- **~500MB disk space** for docs + cache + search index
+- **SQLite with FTS5 support** (included in Python 3.11+ by default)
 
-## Requirements
-- Python 3.11+
-- Local Qt 4.8.4 HTML documentation (see below)
+## 🚀 Installation
 
-## Get the Qt 4.8.4 Docs
-
-### Prepare Docs with Python helper (recommended)
-
-```
-python scripts/prepare_qt48_docs.py # copy docs by default into ./qt4-docs-html
-```
-OR
-```
-python scripts/prepare_qt48_docs.py --segments 4 # faster download with 4 segments
+### From PyPI (Recommended)
+```bash
+pip install qt4-doc-mcp-server
 ```
 
-This will:
-- Download and extract the Qt 4.8.4 source archive (or reuse if present)
-- Stage the HTML docs at `qt4-docs-html` (symlink by default)
-- Copy `LICENSE.FDL` next to the docs
-- Create/update `.env` with `QT_DOC_BASE` and sensible defaults
+### From Source
+```bash
+git clone https://github.com/jztan/qt4-doc-mcp-server.git
+cd qt4-doc-mcp-server
+pip install -e .[dev]
+```
 
+### Setup Qt Documentation
+```bash
+# Automated setup (recommended)
+python scripts/prepare_qt48_docs.py --segments 4
 
+# This will:
+# - Download Qt 4.8.4 source archive
+# - Extract HTML documentation
+# - Create .env with sensible defaults
+# - Copy GFDL license file
+```
 
-## Configure (dotenv)
+### Quick Start Commands
+```bash
+# 1. Install
+pip install qt4-doc-mcp-server
+
+# 2. Setup Qt docs
+python scripts/prepare_qt48_docs.py --segments 4
+
+# 3. Build search index
+qt4-doc-build-index
+
+# 4. Start server
+qt4-doc-mcp-server
+
+# 5. Verify health
+curl -s http://127.0.0.1:8000/health
+```
+
+## ⚙️ Configuration
 Create a `.env` file in the repo root. The helper script writes sensible defaults; adjust as needed:
 
 | Variable | Default | Purpose |
@@ -85,44 +100,29 @@ Create a `.env` file in the repo root. The helper script writes sensible default
 | `MD_CACHE_SIZE` | `512` | In-memory CachedDoc LRU capacity (counts pages). |
 | `DEFAULT_MAX_MARKDOWN_LENGTH` | `20000` | Default maximum characters returned per request (prevents token limit issues). |
 
-## Dev Setup and Run
-```
-uv venv .venv && source .venv/bin/activate
+## 🛠️ Available Tools
 
-# Option 1: run without installing the package (dev-only)
-# Using uv to run the module directly
-uv run python -m qt4_doc_mcp_server.main
+The server provides **2 MCP tools**:
 
-# Option 2: install and use the CLI
-uv pip install -e .[dev]
-qt4-doc-mcp-server
-# Health check
-curl -s http://127.0.0.1:8000/health
+### 1. `read_documentation`
+Read and convert specific Qt documentation pages to Markdown.
 
-# Build the search index (required for search_documentation tool)
-uv run qt4-doc-build-index
+**Features:**
+- Supports fragment extraction (`#details`, `#public-functions`)
+- Pagination with `start_index` and `max_length`
+- Returns Markdown with normalized links and GFDL attribution
+- Section-only mode for targeted content retrieval
 
-# Optional: preconvert all HTML→Markdown into the store for faster reads
-uv run qt4-doc-warm-md
+### 2. `search_documentation`
+Full-text search across all Qt 4.8.4 documentation.
 
-# Run tests (ensure TMPDIR points to a writable location when sandboxed)
-uv run python -m pytest -q
-```
+**Features:**
+- SQLite FTS5 with BM25 relevance ranking
+- Context snippets with `<b>` tag highlighting
+- Configurable result limits (default: 10, max: 50)
+- Deterministic index building for reproducible results
 
-## How It Works (high‑level)
-- Offline‑only: no external HTTP fetches; everything reads from `QT_DOC_BASE`.
-- HTML→Markdown: focused extraction of main content; normalized internal links;
-  attribution appended.
-- Markdown store: preconverted pages saved under `.cache/md` (sharded by URL hash)
-  for fast reads; in‑memory LRU caches hot pages.
-- Search: SQLite FTS5 index (title/headings/body) with BM25 ranking and context snippets.
-
-## MCP Tools
-
-The server provides two MCP tools:
-
-1. **`read_documentation`** - Read and convert a specific Qt documentation page
-2. **`search_documentation`** - Search across all Qt 4.8.4 documentation
+## 💡 Usage Examples
 
 ### Example: read_documentation
 
@@ -211,7 +211,7 @@ Example MCP request/response for searching:
 - The `limit` parameter controls maximum results (default: 10, max: 50)
 - Build the index first with `qt4-doc-build-index` or set `PREINDEX_DOCS=true`
 
-## MCP Client Configuration
+## 🔌 MCP Client Setup
 
 The server exposes an HTTP endpoint at `http://127.0.0.1:8000/mcp`. Register it with your preferred MCP-compatible agent using the instructions below.
 
@@ -359,17 +359,38 @@ For clients that require a command-based approach with HTTP bridge:
 
 </details>
 
-## Deployment
-- **Direct (systemd, bare metal, CI runners):**
-  - Install with `pip install qt4-doc-mcp-server`.
-  - Ensure `.env` points to your Qt docs and writable cache/index directories.
-  - Start with `qt4-doc-mcp-server`; add `PRECONVERT_MD=true` for faster first reads.
-- **Containerization (roadmap):**
-  - Docker support is planned; follow the repository for updates or open an issue if you need it sooner.
+## 🐛 Troubleshooting
 
-## Licensing
-- Code: MIT License (see `LICENSE`).
-- Qt docs: © The Qt Company Ltd./Digia, licensed under GFDL 1.3. This server
+Having issues? Check the [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) guide for solutions to common problems:
+
+- **Search index not found** - Build or enable automatic indexing
+- **Documentation files missing** - Download and configure Qt docs
+- **Markdown conversion fails** - Verify dependencies and cache
+- **Port already in use** - Change port or kill conflicting process
+- **Cache or index corruption** - Clear and rebuild
+
+For detailed solutions and more issues, see the [full troubleshooting guide](docs/TROUBLESHOOTING.md).
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for:
+- Development setup and workflow
+- Code standards and testing requirements
+- Commit message conventions
+- Pull request process
+
+## 📚 Related Resources
+
+- [Model Context Protocol Specification](https://modelcontextprotocol.io/)
+- [Qt 4.8.4 Documentation Archive](https://doc.qt.io/archives/qt-4.8/)
+- [FastMCP Framework](https://github.com/jlowin/fastmcp)
+- [Changelog](CHANGELOG.md)
+- [Contributing Guide](docs/CONTRIBUTING.md)
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
+
+## 📄 License
+- **Code:** MIT License (see `LICENSE`).
+- **Qt Documentation:** © The Qt Company Ltd./Digia, licensed under GFDL 1.3. This server
   converts locally obtained docs and includes attribution in outputs. If you
   redistribute a local mirror, include `LICENSE.FDL` and preserve notices.
-- See `THIRD_PARTY_NOTICES.md` for more.
+- See `THIRD_PARTY_NOTICES.md` for more details.
