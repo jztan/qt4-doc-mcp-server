@@ -5,6 +5,7 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/qt4-doc-mcp-server.svg)](https://pypi.org/project/qt4-doc-mcp-server/)
 [![GitHub Issues](https://img.shields.io/github/issues/jztan/qt4-doc-mcp-server.svg)](https://github.com/jztan/qt4-doc-mcp-server/issues)
 [![CI](https://github.com/jztan/qt4-doc-mcp-server/actions/workflows/pr-tests.yml/badge.svg)](https://github.com/jztan/qt4-doc-mcp-server/actions/workflows/pr-tests.yml)
+[![Downloads](https://pepy.tech/badge/qt4-doc-mcp-server)](https://pepy.tech/project/qt4-doc-mcp-server)
 
 Bring Qt 4.8.4 documentation to your AI coding assistant. Works offline with local docs.
 
