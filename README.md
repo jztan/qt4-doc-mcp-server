@@ -86,23 +86,6 @@ Create a `.env` file in the repo root. The helper script writes sensible default
 | `MD_CACHE_SIZE` | `512` | In-memory CachedDoc LRU capacity (counts pages). |
 | `DEFAULT_MAX_MARKDOWN_LENGTH` | `20000` | Default maximum characters returned per request (prevents token limit issues). |
 
-## 🛠️ Available Tools
-
-The server provides **2 MCP tools** for working with Qt 4.8.4 documentation:
-
-1. **`read_documentation`** - Read and convert specific Qt documentation pages to Markdown
-   - Fragment extraction (`#details`, `#public-functions`)
-   - Pagination with `start_index` and `max_length`
-   - Section-only mode for targeted content
-   - Returns Markdown with normalized links and GFDL attribution
-
-2. **`search_documentation`** - Full-text search across all Qt 4.8.4 documentation
-   - SQLite FTS5 with BM25 relevance ranking
-   - Context snippets with highlighted matches
-   - Configurable result limits (default: 10, max: 50)
-
-For detailed API documentation including parameters, return values, examples, and error handling, see the **[Tool Reference](docs/TOOL_REFERENCE.md)**.
-
 ## 🔌 MCP Client Setup
 
 The server exposes an HTTP endpoint at `http://127.0.0.1:8000/mcp`. Register it with your preferred MCP-compatible agent using the instructions below.
@@ -250,6 +233,23 @@ For clients that require a command-based approach with HTTP bridge:
 ```
 
 </details>
+
+## 🛠️ Available Tools
+
+The server provides **2 MCP tools** for working with Qt 4.8.4 documentation:
+
+1. **`read_documentation`** - Read and convert specific Qt documentation pages to Markdown
+   - Fragment extraction (`#details`, `#public-functions`)
+   - Pagination with `start_index` and `max_length`
+   - Section-only mode for targeted content
+   - Returns Markdown with normalized links and GFDL attribution
+
+2. **`search_documentation`** - Full-text search across all Qt 4.8.4 documentation
+   - SQLite FTS5 with BM25 relevance ranking
+   - Context snippets with highlighted matches
+   - Configurable result limits (default: 10, max: 50)
+
+For detailed API documentation including parameters, return values, examples, and error handling, see the **[Tool Reference](docs/TOOL_REFERENCE.md)**.
 
 ## 📚 Related Resources
 
