@@ -1,9 +1,20 @@
-name: Publish to PyPI
+name: Release
 
 on:
   push:
     tags:
-      - 'v*.*.*'  # Trigger on version tags like v0.4.1
+      - 'v*.*.*'  # Trigger on version tags like v0.6.1
+  workflow_dispatch:  # Manual build-only validation (no PyPI, no registry push)
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false  # never abort a half-pushed release
+
+env:
+  IMAGE: ghcr.io/jztan/qt4-doc-mcp-server
 
 jobs:
   test-before-publish:
@@ -25,8 +36,42 @@ jobs:
       - name: Audit dependencies
         run: bash scripts/audit.sh
 
+  build-image:
+    # Runs in parallel with tests to shorten the release critical path.
+    # Atomicity is preserved because publish gates on BOTH jobs below.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build multi-arch image (push staging tag only on tag events)
+        # On a tag push: build amd64+arm64 and push a deterministic
+        # sha-<commit> staging tag (NOT a version tag). On
+        # workflow_dispatch: build both architectures without pushing.
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ env.IMAGE }}:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   publish:
-    needs: test-before-publish
+    needs: [test-before-publish, build-image]
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
@@ -49,7 +94,47 @@ jobs:
       run: twine check dist/*
 
     - name: Publish to PyPI
+      # --skip-existing makes re-runs idempotent after a partial upload
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: twine upload dist/*
+      run: twine upload --skip-existing dist/*
+
+  promote-image:
+    # build-image is listed explicitly (not just transitively via publish)
+    # so the "staging image must already exist" contract survives future
+    # changes to publish's needs.
+    needs: [build-image, publish]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute release tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: latest=auto
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+      - name: Promote staging image to release tags
+        # Copy the already-built sha-<commit> manifest list to the version
+        # tags. No rebuild: imagetools create repackages the existing
+        # multi-arch manifest. Metadata JSON is passed via env so it is
+        # never interpolated into the shell.
+        env:
+          METADATA_JSON: ${{ steps.meta.outputs.json }}
+        run: |
+          tags=$(jq -cr '.tags | map("--tag " + .) | join(" ")' <<< "$METADATA_JSON")
+          # shellcheck disable=SC2086
+          docker buildx imagetools create $tags "${IMAGE}:sha-${GITHUB_SHA}"
