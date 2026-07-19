@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .cache import CachedDoc, LRUCache, md_store_read, md_store_write
-from .config import Settings
+from .config import Settings, active_docset
 from .convert import extract_main, normalize_links, slice_fragment, to_markdown
 from .errors import DocumentationError, FetchError, ParseError
 from .fetcher import canonicalize_url, url_to_path, load_html
@@ -11,7 +11,7 @@ from .fetcher import canonicalize_url, url_to_path, load_html
 
 ATTRIBUTION = (
     "\n\n---\n"
-    "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3"
+    "Content © The Qt Company Ltd. and contributors — GNU Free Documentation License 1.3"
 )
 
 
@@ -28,7 +28,8 @@ def get_markdown_for_url(
     section_only: bool = False,
 ) -> CachedDoc:
     """Return cached or freshly converted documentation for a canonical Qt URL."""
-    canonical = canonicalize_url(url)
+    docset = active_docset(settings)
+    canonical = canonicalize_url(url, docset)
     cache_enabled = not section_only
 
     if cache_enabled and md_lru:
@@ -44,7 +45,7 @@ def get_markdown_for_url(
 
     doc_base = settings.qt_doc_base or Path(".")
     try:
-        path = url_to_path(canonical, doc_base)
+        path = url_to_path(canonical, doc_base, docset)
         html = load_html(path)
     except DocumentationError:
         raise
@@ -60,7 +61,7 @@ def get_markdown_for_url(
         raise ParseError(f"Unable to identify main content block in {canonical}")
 
     try:
-        full_links = normalize_links(main, canonical)
+        full_links = normalize_links(main, canonical, docset)
     except Exception as exc:
         raise ParseError(f"Failed to normalize links for {canonical}") from exc
 
@@ -93,7 +94,7 @@ def get_markdown_for_url(
         return full_doc
 
     try:
-        fragment_links = normalize_links(fragment_root, canonical)
+        fragment_links = normalize_links(fragment_root, canonical, docset)
     except Exception as exc:
         raise ParseError(f"Failed to normalize links for fragment '{fragment}'") from exc
 

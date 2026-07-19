@@ -1,7 +1,7 @@
 """SQLite FTS5 index build and query implementation.
 
-This module builds a deterministic FTS5 full-text search index from local Qt 4.8.4
-HTML documentation and provides fast ranked search with context snippets.
+This module builds a deterministic FTS5 full-text search index from the active
+local Qt HTML documentation set and provides fast ranked search with context snippets.
 """
 from __future__ import annotations
 
@@ -9,13 +9,16 @@ from dataclasses import dataclass
 from pathlib import Path
 import sqlite3
 import logging
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 try:
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup as _BeautifulSoup
 except Exception:
-    BeautifulSoup = None
+    BeautifulSoup: Any = None
+else:
+    BeautifulSoup = _BeautifulSoup
 
+from .docsets import DocSet, QT4_DOCSET
 from .errors import DocumentationError
 
 logger = logging.getLogger(__name__)
@@ -90,12 +93,15 @@ def _extract_text_content(html: str) -> Tuple[str, str, str]:
 
     soup = BeautifulSoup(html, "lxml" if "lxml" else "html.parser")
 
-    # Remove navigation and chrome (same as convert.py)
+    # Remove navigation and chrome (same as convert.py).  Qt 5/6 wrap the
+    # page body in div.header#qtdocheader, which must be retained.
     for sel in [
         "div.header", "div.nav", "div.sidebar",
         "div.breadcrumbs", "div.ft", "div.footer", "div.qt-footer"
     ]:
         for el in soup.select(sel):
+            if sel == "div.header" and el.select_one("div.mainContent"):
+                continue
             el.decompose()
 
     # Extract title
@@ -135,18 +141,24 @@ def _extract_text_content(html: str) -> Tuple[str, str, str]:
     return title, headings_text, body_text
 
 
-def build_index(db_path: Path, docs_base: Path, progress_callback=None) -> dict:
+def build_index(
+    db_path: Path,
+    docs_base: Path | None,
+    progress_callback=None,
+    docset: DocSet = QT4_DOCSET,
+) -> dict:
     """Build the FTS5 index from local HTML docs.
 
     Args:
         db_path: Path to SQLite database file
         docs_base: Root directory containing HTML files
         progress_callback: Optional callable(current, total, path) for progress updates
+        docset: Active documentation set used to construct canonical URLs
 
     Returns:
         dict with stats: indexed, skipped, errors
     """
-    if not docs_base.exists() or not docs_base.is_dir():
+    if docs_base is None or not docs_base.exists() or not docs_base.is_dir():
         raise IndexError(f"Documentation base directory not found: {docs_base}")
 
     # Collect all HTML files in deterministic order
@@ -184,6 +196,10 @@ def build_index(db_path: Path, docs_base: Path, progress_callback=None) -> dict:
                 "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
                 ("total_files", str(len(html_files)))
             )
+            cur.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+                ("docset_prefix", docset.canonical_prefix)
+            )
 
             # Index each file
             for idx, html_path in enumerate(html_files):
@@ -204,7 +220,7 @@ def build_index(db_path: Path, docs_base: Path, progress_callback=None) -> dict:
 
                     # Compute relative path and canonical URL
                     path_rel = html_path.relative_to(docs_base).as_posix()
-                    canonical_url = f"https://doc.qt.io/archives/qt-4.8/{path_rel}"
+                    canonical_url = f"{docset.canonical_base_url}{path_rel}"
 
                     # Insert into FTS5 table
                     cur.execute(
@@ -241,6 +257,23 @@ def build_index(db_path: Path, docs_base: Path, progress_callback=None) -> dict:
 
     except Exception as e:
         raise IndexError(f"Failed to build index: {e}")
+
+
+def index_matches_docs(
+    db_path: Path, docs_base: Path | None, docset: DocSet = QT4_DOCSET
+) -> bool:
+    """Return whether an existing index belongs to this exact local docset."""
+    if docs_base is None or not db_path.exists():
+        return False
+    try:
+        with sqlite3.connect(str(db_path)) as con:
+            rows = dict(con.execute("SELECT key, value FROM meta"))
+        return (
+            rows.get("doc_base") == str(docs_base)
+            and rows.get("docset_prefix") == docset.canonical_prefix
+        )
+    except (sqlite3.Error, OSError):
+        return False
 
 
 def search(

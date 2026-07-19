@@ -6,12 +6,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import os
+import json
 import logging
+import os
+import shutil
 import sqlite3
 from typing import Tuple
 
 from dotenv import load_dotenv
+
+from .docsets import DocSet, detect_docset
 
 
 @dataclass
@@ -26,6 +30,7 @@ class Settings:
     md_cache_size: int = 512
     mcp_log_level: str = "WARNING"
     default_max_markdown_length: int = 20000
+    docset: DocSet | None = None
 
 
 def load_settings() -> Settings:
@@ -48,6 +53,7 @@ def load_settings() -> Settings:
     s.server_port = int(os.getenv("SERVER_PORT", s.server_port))
     qdb = os.getenv("QT_DOC_BASE")
     s.qt_doc_base = Path(qdb) if qdb else None
+    s.docset = detect_docset(s.qt_doc_base)
     s.index_db_path = Path(os.getenv("INDEX_DB_PATH", str(s.index_db_path)))
     s.md_cache_dir = Path(os.getenv("MD_CACHE_DIR", str(s.md_cache_dir)))
     s.preindex_docs = os.getenv("PREINDEX_DOCS", str(s.preindex_docs)).lower() == "true"
@@ -58,15 +64,40 @@ def load_settings() -> Settings:
     return s
 
 
+def active_docset(settings: Settings) -> DocSet:
+    """Return the selected docset, detecting it lazily for programmatic users."""
+    if settings.docset is None:
+        settings.docset = detect_docset(settings.qt_doc_base)
+    return settings.docset
+
+
+def _cache_provenance(settings: Settings) -> dict[str, str]:
+    base = settings.qt_doc_base
+    return {
+        "doc_base": str(base.resolve()) if base else "",
+        "docset": active_docset(settings).key,
+    }
+
+
 def ensure_dirs(settings: Settings) -> None:
-    """Ensure index and markdown store directories exist."""
+    """Ensure storage directories exist and invalidate a cache from another docset."""
     try:
         settings.index_db_path.parent.mkdir(parents=True, exist_ok=True)
     except Exception:
         pass
     try:
         settings.md_cache_dir.mkdir(parents=True, exist_ok=True)
+        marker = settings.md_cache_dir / ".provenance.json"
+        provenance = _cache_provenance(settings)
+        previous = None
+        if marker.exists():
+            previous = json.loads(marker.read_text(encoding="utf-8"))
+        if previous is not None and previous != provenance:
+            shutil.rmtree(settings.md_cache_dir)
+            settings.md_cache_dir.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps(provenance, sort_keys=True), encoding="utf-8")
     except Exception:
+        # Cache is an optimisation; failure to prepare it must not prevent startup.
         pass
 
 
@@ -81,11 +112,13 @@ def validate_settings(settings: Settings) -> Tuple[bool, list]:
         logging.error("QT_DOC_BASE does not exist or is not a directory: %s", settings.qt_doc_base)
         ok = False
     else:
+        docset = active_docset(settings)
         index_html = settings.qt_doc_base / "index.html"
-        if not index_html.exists():
-            warnings.append("index.html not found under QT_DOC_BASE; docs path may be incorrect")
+        qtdoc_index = settings.qt_doc_base / "qtdoc" / "index.html"
+        if not index_html.exists() and not qtdoc_index.exists():
+            warnings.append("No index.html or qtdoc/index.html found under QT_DOC_BASE; docs path may be incorrect")
         license_fdl = settings.qt_doc_base / "LICENSE.FDL"
-        if not license_fdl.exists():
+        if docset.key == "qt4.8" and not license_fdl.exists():
             warnings.append("LICENSE.FDL not found under QT_DOC_BASE; ensure license is available alongside docs")
     return ok, warnings
 

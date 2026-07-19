@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import TypedDict, List
 from urllib.parse import urljoin, urlparse
 
+from .docsets import DocSet, QT4_DOCSET
 from .errors import DocumentationError
 from .fetcher import canonicalize_url
 
@@ -49,7 +50,9 @@ def extract_main(html: str):
             title = html[start + 7 : end].strip()
         return None, None, title
 
-    # Strip common chrome
+    # Strip common chrome.  Qt 5/6 place the actual page body inside
+    # div.header#qtdocheader, so only remove header elements that do not
+    # contain a main-content block.
     for sel in [
         "div.header",
         "div.nav",
@@ -60,6 +63,8 @@ def extract_main(html: str):
         "div.qt-footer",
     ]:
         for el in soup.select(sel):
+            if sel == "div.header" and el.select_one("div.mainContent"):
+                continue
             el.decompose()
 
     main = (
@@ -75,7 +80,9 @@ def extract_main(html: str):
     return soup, main, title
 
 
-def normalize_links(root, canonical_url: str) -> List[dict]:
+def normalize_links(
+    root, canonical_url: str, docset: DocSet = QT4_DOCSET
+) -> List[dict]:
     """Rewrite internal links to canonical absolute URLs and collect them.
 
     Returns a list of {text, url} for normalized links.
@@ -97,10 +104,10 @@ def normalize_links(root, canonical_url: str) -> List[dict]:
         if (
             parsed.netloc
             and parsed.netloc.lower() == "doc.qt.io"
-            and parsed.path.startswith("/archives/qt-4.8/")
+            and parsed.path.startswith(docset.canonical_prefix)
         ):
             try:
-                link_url = canonicalize_url(abs_url)
+                link_url = canonicalize_url(abs_url, docset)
             except DocumentationError:
                 link_url = abs_url
             a["href"] = link_url
@@ -148,7 +155,7 @@ def to_markdown(root) -> str:
     if root is None:
         return ""
     try:
-        import markdownify  # type: ignore
+        import markdownify
 
         return markdownify.markdownify(str(root), heading_style="ATX")
     except Exception:  # pragma: no cover - optional dep fallback

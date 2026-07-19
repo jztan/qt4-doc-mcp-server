@@ -1,4 +1,4 @@
-# Qt 4.8.4 Documentation MCP Server
+# Qt Documentation MCP Server
 
 [![PyPI Version](https://img.shields.io/pypi/v/qt4-doc-mcp-server.svg)](https://pypi.org/project/qt4-doc-mcp-server/)
 [![License](https://img.shields.io/github/license/jztan/qt4-doc-mcp-server.svg)](LICENSE)
@@ -7,7 +7,7 @@
 [![CI](https://github.com/jztan/qt4-doc-mcp-server/actions/workflows/pr-tests.yml/badge.svg)](https://github.com/jztan/qt4-doc-mcp-server/actions/workflows/pr-tests.yml)
 [![Downloads](https://pepy.tech/badge/qt4-doc-mcp-server)](https://pepy.tech/project/qt4-doc-mcp-server)
 
-Bring Qt 4.8.4 documentation to your AI coding assistant. Works offline with local docs.
+Bring locally installed Qt 4.8, Qt 5, or Qt 6 documentation to your AI coding assistant. Works offline with one selected documentation set at a time.
 
 ## [Tool Reference](./docs/TOOL_REFERENCE.md) | [Changelog](./CHANGELOG.md) | [Contributing](./docs/CONTRIBUTING.md) | [Troubleshooting](./docs/TROUBLESHOOTING.md)
 
@@ -20,9 +20,9 @@ Bring Qt 4.8.4 documentation to your AI coding assistant. Works offline with loc
 
 ## 📦 Prerequisites
 - **Python 3.11+** required
-- **Qt 4.8.4 HTML Documentation**
-  - Download automatically via included script, or
-  - Manual download from qt.io archives
+- **Qt HTML Documentation** for one supported release (Qt 4.8, Qt 5, or Qt 6)
+  - The included helper downloads Qt 4.8.4 only.
+  - Point `QT_DOC_BASE` directly at an existing Qt 5/6 offline documentation root.
 - **~500MB disk space** for docs + cache + search index
 - **SQLite with FTS5 support** (included in Python 3.11+ by default)
 
@@ -75,7 +75,7 @@ Create a `.env` file in the repo root. The helper script writes sensible default
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `QT_DOC_BASE` | _required_ | Absolute path to the Qt 4.8.4 HTML docs (`.../doc/html`). |
+| `QT_DOC_BASE` | _required_ | Absolute path to one Qt 4.8, Qt 5, or Qt 6 HTML documentation root. The server detects the active docset. |
 | `INDEX_DB_PATH` | `.index/fts.sqlite` | Location of the SQLite FTS5 search index. |
 | `MD_CACHE_DIR` | `.cache/md` | Directory for cached Markdown blobs + metadata. |
 | `PREINDEX_DOCS` | `true` | Build search index automatically at startup if not present. |
@@ -85,6 +85,8 @@ Create a `.env` file in the repo root. The helper script writes sensible default
 | `MCP_LOG_LEVEL` | `WARNING` | Logging verbosity (DEBUG/INFO/WARNING/ERROR). |
 | `MD_CACHE_SIZE` | `512` | In-memory CachedDoc LRU capacity (counts pages). |
 | `DEFAULT_MAX_MARKDOWN_LENGTH` | `20000` | Default maximum characters returned per request (prevents token limit issues). |
+
+The selected root determines accepted and emitted URLs: Qt 4.8 uses `https://doc.qt.io/archives/qt-4.8/`, Qt 5 uses `https://doc.qt.io/qt-5/`, and Qt 6 uses its detected minor series (for example `https://doc.qt.io/qt-6.8/`). Change `QT_DOC_BASE` to switch docsets, then rebuild the index; the Markdown cache and index are invalidated when their source docset changes.
 
 ## 🔌 MCP Client Setup
 
@@ -197,7 +199,7 @@ Kiro primarily supports stdio-based MCP servers. For HTTP servers, use an HTTP-t
      }
    }
    ```
-2. Save the file and restart Kiro. The Qt 4.8.4 documentation tools will appear in the MCP panel.
+2. Save the file and restart Kiro. The active Qt documentation tools will appear in the MCP panel.
 
 **Note:** Direct HTTP transport support in Kiro is limited. The above configuration uses `mcp-client-http` as a bridge to connect to HTTP MCP servers.
 
@@ -236,15 +238,15 @@ For clients that require a command-based approach with HTTP bridge:
 
 ## 🛠️ Available Tools
 
-The server provides **2 MCP tools** for working with Qt 4.8.4 documentation:
+The server provides **2 MCP tools** for working with the active local Qt documentation set:
 
-1. **`read_documentation`** - Read and convert specific Qt documentation pages to Markdown
+1. **`read_documentation`** - Read and convert pages from the active Qt documentation set to Markdown
    - Fragment extraction (`#details`, `#public-functions`)
    - Pagination with `start_index` and `max_length`
    - Section-only mode for targeted content
    - Returns Markdown with normalized links and GFDL attribution
 
-2. **`search_documentation`** - Full-text search across all Qt 4.8.4 documentation
+2. **`search_documentation`** - Full-text search across the active Qt documentation set
    - SQLite FTS5 with BM25 relevance ranking
    - Context snippets with highlighted matches
    - Configurable result limits (default: 10, max: 50)
@@ -254,7 +256,7 @@ For detailed API documentation including parameters, return values, examples, an
 ## 📚 Related Resources
 
 - [Model Context Protocol Specification](https://modelcontextprotocol.io/)
-- [Qt 4.8.4 Documentation Archive](https://doc.qt.io/archives/qt-4.8/)
+- [Qt Documentation](https://doc.qt.io/)
 - [FastMCP Framework](https://github.com/jlowin/fastmcp)
 - [Tool Reference](docs/TOOL_REFERENCE.md)
 - [Changelog](CHANGELOG.md)
@@ -263,7 +265,7 @@ For detailed API documentation including parameters, return values, examples, an
 
 ## 📄 License
 - **Code:** MIT License (see `LICENSE`).
-- **Qt Documentation:** © The Qt Company Ltd./Digia, licensed under GFDL 1.3. This server
+- **Qt Documentation:** © The Qt Company Ltd. and contributors, licensed under GFDL 1.3. This server
   converts locally obtained docs and includes attribution in outputs. If you
   redistribute a local mirror, include `LICENSE.FDL` and preserve notices.
 - See `THIRD_PARTY_NOTICES.md` for more details.

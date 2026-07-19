@@ -5,12 +5,9 @@ import sys
 import time
 from pathlib import Path
 
-from .config import load_settings, ensure_dirs, validate_settings
+from .config import active_docset, load_settings, ensure_dirs, validate_settings
 from .doc_service import get_markdown_for_url
-from .search import build_index
-
-
-BASE_CANONICAL = "https://doc.qt.io/archives/qt-4.8/"
+from .search import build_index, index_matches_docs
 
 
 def _iter_html_files(root: Path):
@@ -20,7 +17,7 @@ def _iter_html_files(root: Path):
 
 
 def warm_md_main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Pre-convert all Qt 4.8.4 HTML docs to Markdown store")
+    ap = argparse.ArgumentParser(description="Pre-convert the active Qt HTML documentation set to Markdown store")
     ap.add_argument("--limit", type=int, default=0, help="Limit number of files (for testing)")
     args = ap.parse_args(argv)
 
@@ -34,6 +31,7 @@ def warm_md_main(argv: list[str] | None = None) -> int:
         return 2
 
     root = settings.qt_doc_base or Path('.')
+    docset = active_docset(settings)
     files = list(_iter_html_files(root))
     if args.limit and args.limit > 0:
         files = files[: args.limit]
@@ -48,7 +46,7 @@ def warm_md_main(argv: list[str] | None = None) -> int:
     last_len = 0
     for i, f in enumerate(files, 1):
         rel = f.relative_to(root).as_posix()
-        url = BASE_CANONICAL + rel
+        url = docset.canonical_base_url + rel
         try:
             doc = get_markdown_for_url(url, settings, None)
             total_md += len(doc.markdown)
@@ -73,7 +71,7 @@ def warm_md_main(argv: list[str] | None = None) -> int:
 def build_index_main(argv: list[str] | None = None) -> int:
     """CLI entry point for building the FTS5 search index."""
     ap = argparse.ArgumentParser(
-        description="Build FTS5 search index from Qt 4.8.4 HTML documentation"
+        description="Build FTS5 search index from the active Qt HTML documentation set"
     )
     ap.add_argument(
         "--force",
@@ -97,15 +95,15 @@ def build_index_main(argv: list[str] | None = None) -> int:
         return 2
 
     index_path = settings.index_db_path
+    docset = active_docset(settings)
 
-    # Check if index exists
-    if index_path.exists() and not args.force:
-        print(
-            f"Index already exists at {index_path}",
-            file=sys.stderr
-        )
+    # Reuse only an index built for this exact documentation root and URL set.
+    if index_path.exists() and not args.force and index_matches_docs(index_path, docs_base, docset):
+        print(f"Index already exists at {index_path}", file=sys.stderr)
         print("Use --force to rebuild", file=sys.stderr)
         return 0
+    if index_path.exists() and not args.force:
+        print("Existing index belongs to a different documentation set; rebuilding.", file=sys.stderr)
 
     print(f"Building search index from {docs_base}")
     print(f"Index will be written to {index_path}")
@@ -134,7 +132,7 @@ def build_index_main(argv: list[str] | None = None) -> int:
         last_len = len(msg)
 
     try:
-        stats = build_index(index_path, docs_base, progress_callback=progress)
+        stats = build_index(index_path, docs_base, progress_callback=progress, docset=docset)
         sys.stderr.write("\n")
 
         elapsed = time.monotonic() - t0

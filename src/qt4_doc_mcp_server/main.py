@@ -1,4 +1,4 @@
-"""MCP entry point for the Qt 4.8.4 Documentation MCP Server.
+"""MCP entry point for the active local Qt Documentation MCP Server.
 
 Implements MCP using the FastMCP server with streamable HTTP transport
 (stateless). Exposes a /health route via FastMCP custom routing.
@@ -18,7 +18,7 @@ if __package__ in (None, ""):
 
 from dotenv import load_dotenv
 
-from .config import load_settings, ensure_dirs, validate_settings, probe_fts5
+from .config import active_docset, load_settings, ensure_dirs, validate_settings, probe_fts5
 from .server import ensure_tools_loaded, mcp
 from .tools import configure_from_settings
 
@@ -80,8 +80,13 @@ def run() -> None:
             from .cli import build_index_main
 
             logger.info("PREINDEX_DOCS=true: building search index before start...")
-            # Only build if index doesn't exist
-            if not settings.index_db_path.exists():
+            from .search import index_matches_docs
+
+            if not index_matches_docs(
+                settings.index_db_path,
+                settings.qt_doc_base,
+                active_docset(settings),
+            ):
                 rc = build_index_main([])
                 if rc != 0:
                     logger.warning("Index build exited with code %s", rc)

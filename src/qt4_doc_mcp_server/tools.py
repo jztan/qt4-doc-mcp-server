@@ -1,4 +1,4 @@
-"""MCP tools for the Qt 4.8.4 Docs server."""
+"""MCP tools for the active local Qt documentation set."""
 
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ from mcp.server.fastmcp.exceptions import ToolError
 
 from .server import mcp
 from .cache import LRUCache, CachedDoc
-from .config import Settings, load_settings
+from .config import Settings, active_docset, load_settings
 from .doc_service import get_markdown_for_url
 from .errors import (
     DocumentationError,
     FetchError,
     TimeoutDocumentationError,
 )
-from .search import search, SearchUnavailable, IndexError as SearchIndexError
+from .search import index_matches_docs, search, SearchUnavailable, IndexError as SearchIndexError
 
 
 _settings: Settings | None = None
@@ -59,7 +59,7 @@ def _format_result(doc: CachedDoc, url: str, *, start_index: int | None, max_len
             markdown = markdown[start:]
             truncated = start > 0
     
-    clean_attr = "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3"
+    clean_attr = "Content © The Qt Company Ltd. and contributors — GNU Free Documentation License 1.3"
     result = {
         "title": doc.title,
         "url": url,
@@ -89,7 +89,7 @@ async def read_documentation(
     start_index: int | None = None,
     max_length: int | None = None,
 ) -> dict:
-    """Fetch a Qt 4.8.4 docs page and return Markdown.
+    """Fetch a page from the active local Qt documentation set and return Markdown.
     
     Args:
         url: Qt documentation URL
@@ -135,7 +135,7 @@ async def search_documentation(
     limit: int = 10,
     scope: str = "all",
 ) -> dict:
-    """Search Qt 4.8.4 documentation for relevant pages.
+    """Search the active local Qt documentation set for relevant pages.
 
     Args:
         query: Search terms (FTS5 query syntax supported)
@@ -161,6 +161,13 @@ async def search_documentation(
         raise ToolError("Only scope='all' is currently supported")
 
     try:
+        if not index_matches_docs(
+            settings.index_db_path,
+            settings.qt_doc_base,
+            active_docset(settings),
+        ):
+            raise SearchUnavailable("Search index is missing or belongs to a different documentation set")
+
         results = search(
             db_path=settings.index_db_path,
             query=query,
@@ -185,7 +192,7 @@ async def search_documentation(
     except SearchUnavailable as exc:
         raise ToolError(
             f"Search index not available: {exc}. "
-            "Run 'qt4-doc-build-index' to build the index."
+            "Run 'qt4-doc-build-index' to build the index for the active docset."
         ) from exc
     except SearchIndexError as exc:
         raise ToolError(f"Search error: {exc}") from exc

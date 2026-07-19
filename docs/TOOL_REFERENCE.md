@@ -1,13 +1,13 @@
 # Tool Reference
 
-Complete reference for all MCP tools provided by the Qt 4.8.4 Documentation MCP Server.
+Complete reference for all MCP tools provided by the Qt Documentation MCP Server. The server serves one active local Qt 4.8, Qt 5, or Qt 6 documentation set at a time.
 
 ## Available Tools
 
 The server provides **2 MCP tools**:
 
 1. [`read_documentation`](#read_documentation) - Read and convert Qt documentation pages
-2. [`search_documentation`](#search_documentation) - Search across all Qt 4.8.4 documentation
+2. [`search_documentation`](#search_documentation) - Search across the active documentation set
 
 ---
 
@@ -27,7 +27,7 @@ Read and convert specific Qt documentation pages to Markdown format.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `url` | string | Yes | - | Qt documentation URL (canonical or relative) |
+| `url` | string | Yes | - | Canonical URL for the active Qt documentation set |
 | `fragment` | string | No | `null` | HTML fragment ID to extract (e.g., `#details`) |
 | `section_only` | boolean | No | `false` | If true, return only the fragment section |
 | `start_index` | integer | No | `0` | Starting character index for pagination |
@@ -116,15 +116,16 @@ Read and convert specific Qt documentation pages to Markdown format.
 - Fragment extraction bypasses cache for fresh content
 
 **URL Formats:**
-- Canonical: `https://doc.qt.io/archives/qt-4.8/qstring.html`
-- Relative: `qstring.html` (automatically normalized)
-- With fragment: `qstring.html#details`
+- Qt 4 canonical: `https://doc.qt.io/archives/qt-4.8/qstring.html`
+- Qt 5 canonical: `https://doc.qt.io/qt-5/qstring.html`
+- Qt 6 canonical: `https://doc.qt.io/qt-6.8/qtcore/qstring.html` (use the detected minor series)
+- With fragment: append `#details` to a canonical URL
 
 ---
 
 ## `search_documentation`
 
-Full-text search across all Qt 4.8.4 documentation using SQLite FTS5.
+Full-text search across the active local Qt documentation set using SQLite FTS5.
 
 ### Features
 
@@ -255,9 +256,9 @@ All tools return errors in standard MCP format:
 | Code | Cause | Solution |
 |------|-------|----------|
 | `InvalidURL` | Malformed or unsupported URL | Check URL format matches Qt archives pattern |
-| `NotAllowed` | URL outside Qt 4.8.4 docs scope | Use only Qt 4.8.4 documentation URLs |
+| `NotAllowed` | URL outside the active docs scope | Use a URL matching the selected Qt docset |
 | `NotFound` | Documentation file not found | Verify `QT_DOC_BASE` points to correct directory |
-| `SearchUnavailable` | Search index not built | Run `qt4-doc-build-index` or set `PREINDEX_DOCS=true` |
+| `SearchUnavailable` | Search index not built/current | Run `qt4-doc-build-index` or set `PREINDEX_DOCS=true` |
 | `ParseError` | HTML parsing failed | Check if HTML file is corrupted |
 | `Timeout` | Operation took too long | Retry or contact support |
 
