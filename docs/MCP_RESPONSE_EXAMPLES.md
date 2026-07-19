@@ -1,12 +1,14 @@
 # MCP Server Response Examples
 
-This document shows exactly what the Qt 4.8.4 Documentation MCP Server responds with when clients call the available MCP tools.
+This document shows exactly what the Qt Documentation MCP Server responds with when clients call the available MCP tools. The server serves one active local Qt 4.8, Qt 5, or Qt 6 documentation set at a time.
 
 ## Overview
 
 The server provides two MCP tools:
-1. **`read_documentation`** - Read and convert Qt documentation pages to Markdown
-2. **`search_documentation`** - Full-text search across all Qt 4.8.4 documentation
+1. **`read_documentation`** - Read and convert pages from the active Qt documentation set to Markdown
+2. **`search_documentation`** - Full-text search across the active Qt documentation set
+
+Documents are identified by root-relative Markdown paths under `QT_DOC_BASE`, not online URLs. Examples: `qstring.md` (Qt 4), `qtcore/qstring.md` (Qt 5/6 Core), `qtdoc/accessible.md` (Qt 5/6 global page).
 
 ---
 
@@ -16,7 +18,7 @@ The server provides two MCP tools:
 
 ```typescript
 {
-  url: string;              // Required: Qt documentation URL
+  path: string;             // Required: Root-relative Markdown path (e.g., "qtcore/qobject.md")
   fragment?: string;        // Optional: HTML fragment/anchor (e.g., "#details")
   section_only?: boolean;   // Optional: If true, return only the fragment section
   start_index?: number;     // Optional: Character offset for pagination
@@ -31,14 +33,13 @@ The tool returns a **dictionary** with the following fields:
 ```typescript
 {
   title: string;           // Page title from <h1> or <title>
-  url: string;             // Original URL passed in
-  canonical_url: string;   // Normalized Qt docs URL
+  path: string;            // Normalized root-relative document path
   markdown: string;        // Converted Markdown content
   attribution: string;     // GFDL 1.3 license attribution
-  links: Array<{          // Extracted links from the page
-    text: string;         // Link text
-    url: string;          // Absolute canonical URL
-  }>;
+  links: Array<
+    | { text: string; path: string }  // Local doc link (may carry "#fragment")
+    | { text: string; url: string }   // External link
+  >;
   content_info?: {        // Present when pagination is used
     total_length: number; // Total Markdown length before truncation
     returned_length: number; // Length of markdown returned
@@ -59,7 +60,7 @@ The tool returns a **dictionary** with the following fields:
   "params": {
     "name": "read_documentation",
     "arguments": {
-      "url": "https://doc.qt.io/archives/qt-4.8/qstring.html"
+      "path": "qstring.md"
     }
   }
 }
@@ -73,22 +74,21 @@ The tool returns a **dictionary** with the following fields:
       "type": "text",
       "text": {
         "title": "QString Class Reference",
-        "url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
-        "canonical_url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
+        "path": "qstring.md",
         "markdown": "# QString Class Reference\n\nThe QString class provides a Unicode character string.\n\n## Public Types\n\n- typedef `ConstIterator`\n- typedef `Iterator`\n...(truncated for brevity)...",
-        "attribution": "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3",
+        "attribution": "Content © The Qt Company Ltd. and contributors — GNU Free Documentation License 1.3",
         "links": [
           {
             "text": "QChar",
-            "url": "https://doc.qt.io/archives/qt-4.8/qchar.html"
+            "path": "qchar.md"
           },
           {
             "text": "QStringList",
-            "url": "https://doc.qt.io/archives/qt-4.8/qstringlist.html"
+            "path": "qstringlist.md"
           },
           {
             "text": "QByteArray",
-            "url": "https://doc.qt.io/archives/qt-4.8/qbytearray.html"
+            "path": "qbytearray.md"
           }
         ],
         "content_info": {
@@ -106,7 +106,7 @@ The tool returns a **dictionary** with the following fields:
 **Key Points:**
 - Default `max_length` is 20,000 characters to prevent token limit issues
 - `content_info` is included because content was truncated
-- All internal links are normalized to canonical Qt URLs
+- Internal links carry a root-relative `path` usable directly in the next `read_documentation` call; external links keep a `url` field instead
 - Links array allows easy navigation without parsing Markdown
 
 ---
@@ -120,7 +120,7 @@ The tool returns a **dictionary** with the following fields:
   "params": {
     "name": "read_documentation",
     "arguments": {
-      "url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
+      "path": "qstring.md",
       "start_index": 20000,
       "max_length": 20000
     }
@@ -136,14 +136,13 @@ The tool returns a **dictionary** with the following fields:
       "type": "text",
       "text": {
         "title": "QString Class Reference",
-        "url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
-        "canonical_url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
+        "path": "qstring.md",
         "markdown": "...continuation of content...\n\n## QString::toLatin1()\n\nReturns a Latin-1 representation...",
-        "attribution": "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3",
+        "attribution": "Content © The Qt Company Ltd. and contributors — GNU Free Documentation License 1.3",
         "links": [
           {
             "text": "toLatin1",
-            "url": "https://doc.qt.io/archives/qt-4.8/qstring.html#toLatin1"
+            "path": "qstring.md#toLatin1"
           }
         ],
         "content_info": {
@@ -174,8 +173,8 @@ The tool returns a **dictionary** with the following fields:
   "params": {
     "name": "read_documentation",
     "arguments": {
-      "url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
-      "fragment": "public-functions",
+      "path": "qstring.md",
+      "fragment": "#public-functions",
       "section_only": true
     }
   }
@@ -190,14 +189,13 @@ The tool returns a **dictionary** with the following fields:
       "type": "text",
       "text": {
         "title": "QString Class Reference",
-        "url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
-        "canonical_url": "https://doc.qt.io/archives/qt-4.8/qstring.html#public-functions",
+        "path": "qstring.md",
         "markdown": "## Public Functions\n\n- `QString()`\n- `QString(const QChar *unicode, int size = -1)`\n- `QString(QChar ch)`\n...(only public-functions section content)...",
-        "attribution": "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3",
+        "attribution": "Content © The Qt Company Ltd. and contributors — GNU Free Documentation License 1.3",
         "links": [
           {
             "text": "QChar",
-            "url": "https://doc.qt.io/archives/qt-4.8/qchar.html"
+            "path": "qchar.md"
           }
         ]
       }
@@ -208,7 +206,7 @@ The tool returns a **dictionary** with the following fields:
 
 **Key Points:**
 - `section_only: true` returns ONLY the specified section
-- No `content_info` because it's not paginated (section fits in response)
+- Fragments are passed separately; the `path` itself must not contain `#`
 - Fragment requests **bypass cache** (intentional design)
 - Links are still extracted from the section
 
@@ -223,7 +221,7 @@ The tool returns a **dictionary** with the following fields:
   "params": {
     "name": "read_documentation",
     "arguments": {
-      "url": "https://doc.qt.io/archives/qt-4.8/qwidget.html",
+      "path": "qwidget.md",
       "max_length": 5000
     }
   }
@@ -238,10 +236,9 @@ The tool returns a **dictionary** with the following fields:
       "type": "text",
       "text": {
         "title": "QWidget Class Reference",
-        "url": "https://doc.qt.io/archives/qt-4.8/qwidget.html",
-        "canonical_url": "https://doc.qt.io/archives/qt-4.8/qwidget.html",
+        "path": "qwidget.md",
         "markdown": "# QWidget Class Reference\n\nThe QWidget class is the base class...(shortened)",
-        "attribution": "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3",
+        "attribution": "Content © The Qt Company Ltd. and contributors — GNU Free Documentation License 1.3",
         "links": [...],
         "content_info": {
           "total_length": 38492,
@@ -281,7 +278,7 @@ The tool returns a **dictionary** with the following fields:
   count: number;          // Number of results returned
   results: Array<{
     title: string;        // Page title
-    url: string;          // Canonical URL
+    path: string;         // Root-relative document path
     score: number;        // BM25 relevance score (higher = more relevant)
     context: string;      // Snippet with <b> tag highlighting
   }>
@@ -317,19 +314,19 @@ The tool returns a **dictionary** with the following fields:
         "results": [
           {
             "title": "Signals and Slots",
-            "url": "https://doc.qt.io/archives/qt-4.8/signalsandslots.html",
+            "path": "signalsandslots.md",
             "score": 15.234,
             "context": "…are used for communication between objects. <b>Signals</b> and <b>slots</b> are a central feature of Qt…"
           },
           {
             "title": "QObject Class Reference",
-            "url": "https://doc.qt.io/archives/qt-4.8/qobject.html",
+            "path": "qobject.md",
             "score": 12.891,
             "context": "…The QObject class is the base of all Qt objects. <b>Signals</b> and <b>slots</b> mechanism provides inter-object communication…"
           },
           {
             "title": "QMetaObject Class Reference",
-            "url": "https://doc.qt.io/archives/qt-4.8/qmetaobject.html",
+            "path": "qmetaobject.md",
             "score": 10.567,
             "context": "…Runtime introspection for <b>signals</b> and <b>slots</b>. The meta-object system allows…"
           }
@@ -345,6 +342,7 @@ The tool returns a **dictionary** with the following fields:
 - Context snippets show matches with `<b>` tags for highlighting
 - Default limit is 10 results
 - Ellipsis (…) indicates truncated context
+- Result `path` values feed directly into `read_documentation`
 
 ---
 
@@ -376,19 +374,19 @@ The tool returns a **dictionary** with the following fields:
         "results": [
           {
             "title": "QWidget Class Reference",
-            "url": "https://doc.qt.io/archives/qt-4.8/qwidget.html",
+            "path": "qwidget.md",
             "score": 18.456,
             "context": "<b>QWidget</b> Class Reference. The <b>QWidget</b> class is the base class of all user interface objects…"
           },
           {
             "title": "QMainWindow Class Reference",
-            "url": "https://doc.qt.io/archives/qt-4.8/qmainwindow.html",
+            "path": "qmainwindow.md",
             "score": 9.234,
             "context": "…QMainWindow inherits <b>QWidget</b> and provides a main application window. Central <b>QWidget</b> can be set…"
           },
           {
             "title": "Creating Custom Widgets",
-            "url": "https://doc.qt.io/archives/qt-4.8/widgets-tutorial.html",
+            "path": "widgets-tutorial.md",
             "score": 7.891,
             "context": "…To create a custom widget, subclass <b>QWidget</b> and reimplement paintEvent()…"
           }
@@ -406,7 +404,7 @@ The tool returns a **dictionary** with the following fields:
 
 ---
 
-## Example 7: Multi-Term Search
+## Example 7: Multi-Term Search (Qt 6 docset)
 
 ### Request
 ```json
@@ -433,13 +431,13 @@ The tool returns a **dictionary** with the following fields:
         "results": [
           {
             "title": "QWidget Class Reference",
-            "url": "https://doc.qt.io/archives/qt-4.8/qwidget.html#paintEvent",
+            "path": "qtwidgets/qwidget.md",
             "score": 16.789,
             "context": "…void <b>QWidget</b>::<b>paintEvent</b>(QPaintEvent *<b>event</b>). This <b>event</b> handler can be reimplemented to receive <b>paint</b> events…"
           },
           {
             "title": "The Paint System",
-            "url": "https://doc.qt.io/archives/qt-4.8/paintsystem.html",
+            "path": "qtgui/paintsystem.md",
             "score": 14.234,
             "context": "…Qt's <b>paint</b> system provides classes for <b>painting</b> on <b>widgets</b> and other devices. When a <b>paint</b> <b>event</b> occurs…"
           }
@@ -454,12 +452,13 @@ The tool returns a **dictionary** with the following fields:
 - Multiple terms are ANDed together by FTS5
 - BM25 scoring considers term frequency and document length
 - All matching terms get highlighted in context
+- Qt 5/6 docsets prefix paths with the module directory (`qtwidgets/`, `qtgui/`, ...)
 
 ---
 
 ## Error Responses
 
-### Invalid URL Error
+### Invalid Path Error
 
 **Request:**
 ```json
@@ -468,7 +467,7 @@ The tool returns a **dictionary** with the following fields:
   "params": {
     "name": "read_documentation",
     "arguments": {
-      "url": "https://example.com/invalid.html"
+      "path": "https://doc.qt.io/qt-6/qobject.html"
     }
   }
 }
@@ -479,7 +478,32 @@ The tool returns a **dictionary** with the following fields:
 {
   "error": {
     "code": "TOOL_ERROR",
-    "message": "InvalidURL: URL must be from Qt 4.8 documentation (doc.qt.io/archives/qt-4.8/)"
+    "message": "InvalidPath: Expected a local documentation path, not a URL"
+  }
+}
+```
+
+### Path Escapes Documentation Root
+
+**Request:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "read_documentation",
+    "arguments": {
+      "path": "../secrets.md"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "error": {
+    "code": "TOOL_ERROR",
+    "message": "NotAllowed: Documentation path must stay under QT_DOC_BASE"
   }
 }
 ```
@@ -493,7 +517,7 @@ The tool returns a **dictionary** with the following fields:
   "params": {
     "name": "read_documentation",
     "arguments": {
-      "url": "https://doc.qt.io/archives/qt-4.8/nonexistent.html"
+      "path": "nonexistent.md"
     }
   }
 }
@@ -504,7 +528,7 @@ The tool returns a **dictionary** with the following fields:
 {
   "error": {
     "code": "TOOL_ERROR",
-    "message": "NotFound: No local file found for URL"
+    "message": "NotFound: Documentation file not found: /path/to/docs/nonexistent.html"
   }
 }
 ```
@@ -524,12 +548,12 @@ The tool returns a **dictionary** with the following fields:
 }
 ```
 
-**Response (if index not built):**
+**Response (if index not built or built for a different docset/format):**
 ```json
 {
   "error": {
     "code": "TOOL_ERROR",
-    "message": "SearchUnavailable: Search index not found at .index/fts.sqlite. Run 'qt4-doc-build-index' to build the index."
+    "message": "Search index not available: Search index is missing or belongs to a different documentation set. Run 'qt-doc-build-index' to build the index for the active docset."
   }
 }
 ```
@@ -545,11 +569,11 @@ MCP Tool (read_documentation or search_documentation)
      ↓
 [Cache Check] → Cache Hit → Return Cached Data
      ↓ (miss)
-[Fetch from Disk] → HTML Files
+[Fetch from Disk] → HTML Files under QT_DOC_BASE
      ↓
 [Convert to Markdown] → BeautifulSoup + Markdownify
      ↓
-[Normalize Links] → Canonical URLs
+[Normalize Links] → Relative Markdown links + root-relative paths
      ↓
 [Apply Pagination] → Truncate if needed
      ↓
@@ -571,6 +595,7 @@ Client Response (JSON)
 - Search performance depends on query complexity and index size
 - Fragment/section requests always parse HTML (no cache)
 - Default pagination (20K chars) prevents token overflow
+- The Markdown cache lives under `$QT_DOC_BASE/.index/md/` (or `QT_DOC_STATE_DIR`) and mirrors the documentation tree, so it is directly browsable on disk
 
 ---
 
@@ -579,8 +604,8 @@ Client Response (JSON)
 ### Response Assembly (Code Flow)
 
 ```python
-# tools.py:48-81
-def _format_result(doc: CachedDoc, url: str, *, start_index, max_length) -> dict:
+# tools.py: _format_result
+def _format_result(doc: CachedDoc, *, start_index, max_length) -> dict:
     # 1. Get markdown from CachedDoc
     markdown = doc.markdown
     total_length = len(markdown)
@@ -594,10 +619,9 @@ def _format_result(doc: CachedDoc, url: str, *, start_index, max_length) -> dict
     # 3. Build response dictionary
     result = {
         "title": doc.title,              # From HTML <h1> or <title>
-        "url": url,                       # Original URL
-        "canonical_url": doc.canonical_url,  # Normalized URL
-        "markdown": markdown,             # Converted Markdown
-        "attribution": "Content © ...",   # GFDL 1.3 notice
+        "path": doc.path,                # Normalized root-relative path
+        "markdown": markdown,            # Converted Markdown
+        "attribution": "Content © ...",  # GFDL 1.3 notice
         "links": [dict(link) for link in doc.links],  # Extracted links
     }
 
@@ -615,20 +639,23 @@ def _format_result(doc: CachedDoc, url: str, *, start_index, max_length) -> dict
 
 ### Link Normalization
 
-All links in the response are **absolute canonical URLs**:
+Links inside the Markdown keep their relative structure (so the cached `.md` tree is browsable on disk), while link metadata carries root-relative paths:
 
 ```python
 # Example link extraction from convert.py
 Input HTML:  <a href="qstring.html">QString</a>
-Output JSON: {"text": "QString", "url": "https://doc.qt.io/archives/qt-4.8/qstring.html"}
+Output JSON: {"text": "QString", "path": "qstring.md"}
 
 Input HTML:  <a href="#details">Details</a>
-Output JSON: {"text": "Details", "url": "https://doc.qt.io/archives/qt-4.8/currentpage.html#details"}
+Output JSON: {"text": "Details", "path": "currentpage.md#details"}
+
+Input HTML:  <a href="https://www.example.com/">Example</a>
+Output JSON: {"text": "Example", "url": "https://www.example.com/"}
 ```
 
 This allows clients to:
 1. Navigate between pages without URL parsing
-2. Use URLs directly in new `read_documentation` calls
+2. Use `path` values directly in new `read_documentation` calls
 3. Track visited pages accurately
 
 ---
@@ -641,7 +668,7 @@ This allows clients to:
 1. Agent searches: search_documentation("QListWidget")
 2. Gets top 10 results with scores and snippets
 3. Picks most relevant: "QListWidget Class Reference"
-4. Reads page: read_documentation(url from search)
+4. Reads page: read_documentation(path from search)
 5. Gets paginated content (20K chars)
 6. Follows link to QListWidgetItem
 7. Continues exploration...
@@ -654,7 +681,7 @@ This allows clients to:
 2. IDE calls: search_documentation("QString methods")
 3. Shows quick preview from context snippets
 4. User selects "QString::toLower"
-5. IDE calls: read_documentation(url, fragment="toLower", section_only=true)
+5. IDE calls: read_documentation(path, fragment="#toLower", section_only=true)
 6. Displays just that method documentation
 ```
 
@@ -665,7 +692,7 @@ This allows clients to:
 2. Bot searches: search_documentation("create custom widget")
 3. Gets relevant pages with highlighted snippets
 4. Bot reads top 3 results in full
-5. Synthesizes answer with citations (URLs in response)
+5. Synthesizes answer with citations (paths in response)
 ```
 
 ---
@@ -674,7 +701,7 @@ This allows clients to:
 
 The MCP server returns **rich, structured JSON responses** containing:
 - ✅ Cleaned Markdown content
-- ✅ Normalized absolute URLs for all links
+- ✅ Root-relative document paths for all internal links
 - ✅ Pagination metadata for large documents
 - ✅ Search results with BM25 scoring and highlighted snippets
 - ✅ License attribution (GFDL 1.3)
@@ -683,6 +710,6 @@ The MCP server returns **rich, structured JSON responses** containing:
 All responses are **designed for AI agents and programmatic clients** with:
 - Consistent JSON structure
 - Machine-readable metadata
-- Easy navigation via normalized links
+- Easy navigation via document paths
 - Token-aware pagination
 - Clear error taxonomy

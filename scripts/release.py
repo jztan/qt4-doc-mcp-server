@@ -599,16 +599,27 @@ def preview_release_notes(config: ReleaseConfig, new_version: str) -> None:
     print(body)
 
 
+def regenerate_uv_lock(config: ReleaseConfig) -> None:
+    """Regenerate uv.lock after the version bump so the lockfile stays current."""
+    if config.dry_run:
+        print("  [DRY-RUN] Would run: uv lock")
+    else:
+        run_command(["uv", "lock"])
+        print("  ✓ Regenerated uv.lock")
+
+
 def commit_version_bump(config: ReleaseConfig, new_version: str) -> None:
     """Commit version bump changes on release branch."""
     print("\n=== Commit Version Bump ===\n")
 
-    # Stage changes (uv.lock is gitignored in this repo, so it is not staged)
+    regenerate_uv_lock(config)
+
     files = [
         "pyproject.toml",
         "server.json",
         "src/qt4_doc_mcp_server/__init__.py",
         "CHANGELOG.md",
+        "uv.lock",
     ]
     for f in files:
         run_command(

@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Markdown cache) outside read-only documentation roots ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
 
 ### Changed
+- Dependency audit (`scripts/audit.sh`) now audits the exported `uv.lock` for a
+  deterministic gate, and the release script regenerates and stages `uv.lock`
+  during the version bump
+- `server.json` and `docs/MCP_RESPONSE_EXAMPLES.md` updated for Qt 4/5/6
+  support and the path-based tool API
 - Updated `mcp[cli]` dependency: 1.19.0 → 1.28.1 (capped below 2.0 pre-releases)
 - Updated `uvicorn` dependency: 0.38.0 → 0.51.0
 - Updated `python-dotenv` dependency: 1.1.1 → 1.2.2
