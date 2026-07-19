@@ -6,6 +6,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ## [Unreleased]
 ### Added
+- Python 3.14 support: trove classifier and CI test matrix entry (full test suite passes on 3.14.2)
 - Release automation script (`scripts/release.py`): gitflow release with preflight checks, version bumping, LLM-drafted release notes with approval loop, PyPI/workflow watching, GitHub release creation, and MCP Registry publish
 - Dependency audit script (`scripts/audit.sh`) using pip-audit, run in CI and release preflight
 - `server.json` manifest for MCP Registry publication
