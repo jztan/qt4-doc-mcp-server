@@ -8,9 +8,8 @@ from __future__ import annotations
 from typing import TypedDict, List
 from urllib.parse import urljoin, urlparse
 
-from .docsets import DocSet, QT4_DOCSET
 from .errors import DocumentationError
-from .fetcher import canonicalize_url
+from .fetcher import canonicalize_path
 
 try:
     from bs4 import BeautifulSoup
@@ -80,45 +79,35 @@ def extract_main(html: str):
     return soup, main, title
 
 
-def normalize_links(
-    root, canonical_url: str, docset: DocSet = QT4_DOCSET
-) -> List[dict]:
-    """Rewrite internal links to canonical absolute URLs and collect them.
+def normalize_links(root, document_path: str) -> List[dict]:
+    """Rewrite local links to root-relative documentation paths and collect them.
 
-    Returns a list of {text, url} for normalized links.
+    Local links are returned as ``{text, path}``; external links retain their
+    original URL as ``{text, url}``.
     """
     links: List[dict] = []
     if root is None or BeautifulSoup is None:
         return links
+
+    base_url = "https://local.invalid/" + document_path
     for a in root.find_all("a"):
         href = a.get("href")
         if not href:
             continue
-        if href.startswith("#"):
-            # Keep fragment-only
-            links.append({"text": a.get_text(strip=True), "url": canonical_url + href})
-            continue
-        abs_url = urljoin(canonical_url, href)
-        parsed = urlparse(abs_url)
-        link_url = abs_url
-        if (
-            parsed.netloc
-            and parsed.netloc.lower() == "doc.qt.io"
-            and parsed.path.startswith(docset.canonical_prefix)
-        ):
+        absolute = urljoin(base_url, href)
+        parsed = urlparse(absolute)
+        if parsed.netloc == "local.invalid":
             try:
-                link_url = canonicalize_url(abs_url, docset)
+                link_path = canonicalize_path(parsed.path)
             except DocumentationError:
-                link_url = abs_url
-            a["href"] = link_url
-        elif not parsed.netloc and not parsed.scheme:
-            # Relative path that urljoin could not normalize; keep absolute form
-            link_url = abs_url
-            a["href"] = link_url
+                links.append({"text": a.get_text(strip=True), "url": href})
+                continue
+            if parsed.fragment:
+                link_path += "#" + parsed.fragment
+            a["href"] = link_path
+            links.append({"text": a.get_text(strip=True), "path": link_path})
         else:
-            link_url = abs_url
-        # Collect normalized link target (always absolute when possible)
-        links.append({"text": a.get_text(strip=True), "url": link_url})
+            links.append({"text": a.get_text(strip=True), "url": href})
     return links
 
 

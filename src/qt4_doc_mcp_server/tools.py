@@ -10,7 +10,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 from .server import mcp
 from .cache import LRUCache, CachedDoc
 from .config import Settings, active_docset, load_settings
-from .doc_service import get_markdown_for_url
+from .doc_service import get_markdown_for_path
 from .errors import (
     DocumentationError,
     FetchError,
@@ -45,7 +45,7 @@ def _get_lru() -> LRUCache:
     return _md_lru
 
 
-def _format_result(doc: CachedDoc, url: str, *, start_index: int | None, max_length: int | None) -> dict:
+def _format_result(doc: CachedDoc, *, start_index: int | None, max_length: int | None) -> dict:
     markdown = doc.markdown
     total_length = len(markdown)
     truncated = False
@@ -62,8 +62,7 @@ def _format_result(doc: CachedDoc, url: str, *, start_index: int | None, max_len
     clean_attr = "Content © The Qt Company Ltd. and contributors — GNU Free Documentation License 1.3"
     result = {
         "title": doc.title,
-        "url": url,
-        "canonical_url": doc.canonical_url,
+        "path": doc.path,
         "markdown": markdown,
         "attribution": clean_attr,
         "links": [dict(link) for link in doc.links],
@@ -83,7 +82,7 @@ def _format_result(doc: CachedDoc, url: str, *, start_index: int | None, max_len
 
 @mcp.tool()
 async def read_documentation(
-    url: str,
+    path: str,
     fragment: str | None = None,
     section_only: bool = False,
     start_index: int | None = None,
@@ -92,21 +91,21 @@ async def read_documentation(
     """Fetch a page from the active local Qt documentation set and return Markdown.
     
     Args:
-        url: Qt documentation URL
+        path: Root-relative path to a file under QT_DOC_BASE (for example, 'qtcore/qobject.html')
         fragment: Optional HTML fragment (e.g., '#details')
         section_only: If True with fragment, return only that section
         start_index: Character offset to start from (for pagination)
         max_length: Maximum characters to return (defaults to configured limit)
     
     Returns:
-        Dictionary with title, url, markdown, links, and pagination info
+        Dictionary with title, path, markdown, links, and pagination info
     """
     settings = _get_settings()
     lru = _get_lru()
 
     try:
-        doc = get_markdown_for_url(
-            url,
+        doc = get_markdown_for_path(
+            path,
             settings,
             lru,
             fragment=fragment,
@@ -126,7 +125,7 @@ async def read_documentation(
     if effective_max_length is None:
         effective_max_length = settings.default_max_markdown_length
 
-    return _format_result(doc, url, start_index=start_index, max_length=effective_max_length)
+    return _format_result(doc, start_index=start_index, max_length=effective_max_length)
 
 
 @mcp.tool()
@@ -143,7 +142,7 @@ async def search_documentation(
         scope: Search scope - 'all', 'api', or 'guides' (currently 'all' only)
 
     Returns:
-        Dictionary with results array containing title, url, score, and context snippet
+        Dictionary with results array containing title, path, score, and context snippet
     """
     settings = _get_settings()
 
@@ -179,7 +178,7 @@ async def search_documentation(
             "results": [
                 {
                     "title": r.title,
-                    "url": r.url,
+                    "path": r.path,
                     "score": r.score,
                     "context": r.context,
                 }

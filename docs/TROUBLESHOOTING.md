@@ -147,9 +147,11 @@ rm -rf .cache/md/$(echo -n "qstring.html" | md5)*/
 
 # 3. Test conversion manually
 uv run python -c "
-from qt4_doc_mcp_server.doc_service import get_markdown_for_url
-md = get_markdown_for_url('https://doc.qt.io/archives/qt-4.8/qstring.html')
-print(md[:500])
+from qt4_doc_mcp_server.config import load_settings
+from qt4_doc_mcp_server.doc_service import get_markdown_for_path
+settings = load_settings()
+doc = get_markdown_for_path('qstring.html', settings)
+print(doc.markdown[:500])
 "
 ```
 

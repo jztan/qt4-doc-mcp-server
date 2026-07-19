@@ -12,7 +12,7 @@ import os
 
 @dataclass
 class CachedDoc:
-    canonical_url: str
+    path: str
     title: str
     markdown: str
     links: list[dict[str, Any]]
@@ -37,19 +37,19 @@ class LRUCache:
             self._data.popitem(last=False)
 
 
-def md_store_path(base: Path, canonical_url: str) -> Path:
-    h = hashlib.sha256(canonical_url.encode("utf-8")).hexdigest()
+def md_store_path(base: Path, document_path: str) -> Path:
+    h = hashlib.sha256(document_path.encode("utf-8")).hexdigest()
     return base / h[:2] / f"{h}.md"
 
 
-def md_store_meta_path(base: Path, canonical_url: str) -> Path:
-    h = hashlib.sha256(canonical_url.encode("utf-8")).hexdigest()
+def md_store_meta_path(base: Path, document_path: str) -> Path:
+    h = hashlib.sha256(document_path.encode("utf-8")).hexdigest()
     return base / h[:2] / f"{h}.meta.json"
 
 
-def md_store_read(base: Path, canonical_url: str) -> CachedDoc | None:
-    md_path = md_store_path(base, canonical_url)
-    meta_path = md_store_meta_path(base, canonical_url)
+def md_store_read(base: Path, document_path: str) -> CachedDoc | None:
+    md_path = md_store_path(base, document_path)
+    meta_path = md_store_meta_path(base, document_path)
     if not md_path.exists() or not meta_path.exists():
         return None
     try:
@@ -64,12 +64,12 @@ def md_store_read(base: Path, canonical_url: str) -> CachedDoc | None:
     links = meta.get("links") or []
     if not isinstance(links, list):
         links = []
-    return CachedDoc(canonical_url=canonical_url, title=title, markdown=markdown, links=links)
+    return CachedDoc(path=document_path, title=title, markdown=markdown, links=links)
 
 
-def md_store_write(base: Path, canonical_url: str, doc: CachedDoc) -> None:
-    md_path = md_store_path(base, canonical_url)
-    meta_path = md_store_meta_path(base, canonical_url)
+def md_store_write(base: Path, document_path: str, doc: CachedDoc) -> None:
+    md_path = md_store_path(base, document_path)
+    meta_path = md_store_meta_path(base, document_path)
     md_path.parent.mkdir(parents=True, exist_ok=True)
 
     tmp_md = md_path.with_suffix(".md.tmp")

@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from .cache import CachedDoc, LRUCache, md_store_read, md_store_write
-from .config import Settings, active_docset
+from .config import Settings
 from .convert import extract_main, normalize_links, slice_fragment, to_markdown
 from .errors import DocumentationError, FetchError, ParseError
-from .fetcher import canonicalize_url, url_to_path, load_html
+from .fetcher import canonicalize_path, load_html, path_to_local_path
 
 
 ATTRIBUTION = (
@@ -19,34 +19,33 @@ def _append_attribution(markdown: str) -> str:
     return markdown.rstrip() + ATTRIBUTION
 
 
-def get_markdown_for_url(
-    url: str,
+def get_markdown_for_path(
+    path: str,
     settings: Settings,
     md_lru: LRUCache | None = None,
     *,
     fragment: str | None = None,
     section_only: bool = False,
 ) -> CachedDoc:
-    """Return cached or freshly converted documentation for a canonical Qt URL."""
-    docset = active_docset(settings)
-    canonical = canonicalize_url(url, docset)
+    """Return cached or freshly converted documentation for a local document path."""
+    document_path = canonicalize_path(path)
     cache_enabled = not section_only
 
     if cache_enabled and md_lru:
-        cached = md_lru.get(canonical)
+        cached = md_lru.get(document_path)
         if cached:
             return cached
 
-    stored = md_store_read(settings.md_cache_dir, canonical) if cache_enabled else None
+    stored = md_store_read(settings.md_cache_dir, document_path) if cache_enabled else None
     if stored:
         if md_lru:
-            md_lru.put(canonical, stored)
+            md_lru.put(document_path, stored)
         return stored
 
     doc_base = settings.qt_doc_base or Path(".")
     try:
-        path = url_to_path(canonical, doc_base, docset)
-        html = load_html(path)
+        local_path = path_to_local_path(document_path, doc_base)
+        html = load_html(local_path)
     except DocumentationError:
         raise
     except Exception as exc:  # pragma: no cover - unexpected loader failure
@@ -55,32 +54,32 @@ def get_markdown_for_url(
     try:
         soup, main, title = extract_main(html)
     except Exception as exc:
-        raise ParseError(f"Failed to extract content from {canonical}") from exc
+        raise ParseError(f"Failed to extract content from {document_path}") from exc
 
     if main is None:
-        raise ParseError(f"Unable to identify main content block in {canonical}")
+        raise ParseError(f"Unable to identify main content block in {document_path}")
 
     try:
-        full_links = normalize_links(main, canonical, docset)
+        full_links = normalize_links(main, document_path)
     except Exception as exc:
-        raise ParseError(f"Failed to normalize links for {canonical}") from exc
+        raise ParseError(f"Failed to normalize links for {document_path}") from exc
 
     try:
         full_markdown = to_markdown(main)
     except Exception as exc:
-        raise ParseError(f"Failed to convert HTML to Markdown for {canonical}") from exc
+        raise ParseError(f"Failed to convert HTML to Markdown for {document_path}") from exc
 
     full_doc = CachedDoc(
-        canonical_url=canonical,
+        path=document_path,
         title=title,
         markdown=_append_attribution(full_markdown),
         links=full_links,
     )
 
     if cache_enabled:
-        md_store_write(settings.md_cache_dir, canonical, full_doc)
+        md_store_write(settings.md_cache_dir, document_path, full_doc)
         if md_lru:
-            md_lru.put(canonical, full_doc)
+            md_lru.put(document_path, full_doc)
 
     if fragment is None or not section_only:
         return full_doc
@@ -88,13 +87,13 @@ def get_markdown_for_url(
     try:
         fragment_root = slice_fragment(soup, main, fragment, section_only=True)
     except Exception as exc:
-        raise ParseError(f"Failed to slice fragment '{fragment}' in {canonical}") from exc
+        raise ParseError(f"Failed to slice fragment '{fragment}' in {document_path}") from exc
 
     if fragment_root is None:
         return full_doc
 
     try:
-        fragment_links = normalize_links(fragment_root, canonical, docset)
+        fragment_links = normalize_links(fragment_root, document_path)
     except Exception as exc:
         raise ParseError(f"Failed to normalize links for fragment '{fragment}'") from exc
 
@@ -104,7 +103,7 @@ def get_markdown_for_url(
         raise ParseError(f"Failed to convert fragment '{fragment}' to Markdown") from exc
 
     return CachedDoc(
-        canonical_url=canonical,
+        path=document_path,
         title=title,
         markdown=_append_attribution(fragment_markdown),
         links=fragment_links or full_links,

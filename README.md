@@ -86,7 +86,7 @@ Create a `.env` file in the repo root. The helper script writes sensible default
 | `MD_CACHE_SIZE` | `512` | In-memory CachedDoc LRU capacity (counts pages). |
 | `DEFAULT_MAX_MARKDOWN_LENGTH` | `20000` | Default maximum characters returned per request (prevents token limit issues). |
 
-The selected root determines accepted and emitted URLs: Qt 4.8 uses `https://doc.qt.io/archives/qt-4.8/`, Qt 5 uses `https://doc.qt.io/qt-5/`, and Qt 6 uses its detected minor series (for example `https://doc.qt.io/qt-6.8/`). Change `QT_DOC_BASE` to switch docsets, then rebuild the index; the Markdown cache and index are invalidated when their source docset changes.
+The tools identify documents by their exact root-relative local path, not an online URL. For example, use `qcompleter.html` for a Qt 4 page, `qtdoc/accessible.html` for a Qt 5/6 global page, or `qtcore/qobject.html` for a Qt 5/6 Core page. Change `QT_DOC_BASE` to switch docsets, then rebuild the index; the Markdown cache and index are invalidated when their source docset changes.
 
 ## 🔌 MCP Client Setup
 

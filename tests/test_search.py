@@ -208,10 +208,10 @@ def test_search_result_structure(sample_settings: Settings) -> None:
 
     assert isinstance(result, SearchResult)
     assert isinstance(result.title, str)
-    assert isinstance(result.url, str)
+    assert isinstance(result.path, str)
     assert isinstance(result.score, float)
     assert isinstance(result.context, str)
-    assert result.url.startswith("https://doc.qt.io/archives/qt-4.8/")
+    assert result.path == "qstring.html"
 
 
 @pytest.mark.asyncio
@@ -235,7 +235,7 @@ async def test_search_documentation_tool(sample_settings: Settings) -> None:
     # Check result structure
     first_result = result["results"][0]
     assert "title" in first_result
-    assert "url" in first_result
+    assert "path" in first_result
     assert "score" in first_result
     assert "context" in first_result
 

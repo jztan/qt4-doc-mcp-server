@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from .config import active_docset, load_settings, ensure_dirs, validate_settings
-from .doc_service import get_markdown_for_url
+from .doc_service import get_markdown_for_path
 from .search import build_index, index_matches_docs
 
 
@@ -31,7 +31,6 @@ def warm_md_main(argv: list[str] | None = None) -> int:
         return 2
 
     root = settings.qt_doc_base or Path('.')
-    docset = active_docset(settings)
     files = list(_iter_html_files(root))
     if args.limit and args.limit > 0:
         files = files[: args.limit]
@@ -46,9 +45,8 @@ def warm_md_main(argv: list[str] | None = None) -> int:
     last_len = 0
     for i, f in enumerate(files, 1):
         rel = f.relative_to(root).as_posix()
-        url = docset.canonical_base_url + docset.url_relative_path(rel)
         try:
-            doc = get_markdown_for_url(url, settings, None)
+            doc = get_markdown_for_path(rel, settings, None)
             total_md += len(doc.markdown)
         except Exception as e:
             print(f"\nError converting {rel}: {e}", file=sys.stderr)
@@ -101,7 +99,7 @@ def build_index_main(argv: list[str] | None = None) -> int:
     index_path = settings.index_db_path
     docset = active_docset(settings)
 
-    # Reuse only an index built for this exact documentation root and URL set.
+    # Reuse only an index built for this exact documentation root and docset.
     if index_path.exists() and not args.force and index_matches_docs(index_path, docs_base, docset):
         print(f"Index already exists at {index_path}", file=sys.stderr)
         print("Use --force to rebuild", file=sys.stderr)

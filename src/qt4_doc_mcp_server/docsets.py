@@ -1,4 +1,4 @@
-"""Detection and URL rules for one active local Qt documentation set."""
+"""Detection for one active local Qt documentation set."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,36 +6,26 @@ from pathlib import Path
 import re
 
 
-CANONICAL_HOST = "doc.qt.io"
-QT4_PREFIX = "/archives/qt-4.8/"
-
-
 @dataclass(frozen=True)
 class DocSet:
-    """A locally installed Qt documentation release and its public URL space."""
+    """A locally installed Qt documentation release."""
 
     key: str
     display_name: str
-    canonical_prefix: str
-
-    @property
-    def canonical_base_url(self) -> str:
-        return f"https://{CANONICAL_HOST}{self.canonical_prefix}"
 
 
-QT4_DOCSET = DocSet("qt4.8", "Qt 4.8", QT4_PREFIX)
+QT4_DOCSET = DocSet("qt4.8", "Qt 4.8")
 
 
 def _docset_for_version(major: int, minor: int | None = None) -> DocSet:
     if major == 4:
         return QT4_DOCSET
     if major == 5:
-        # Qt 5 online documentation is published under one stable URL series.
-        return DocSet("qt5", "Qt 5", "/qt-5/")
+        return DocSet("qt5", "Qt 5")
     if major == 6 and minor is not None:
-        return DocSet(f"qt6.{minor}", f"Qt 6.{minor}", f"/qt-6.{minor}/")
+        return DocSet(f"qt6.{minor}", f"Qt 6.{minor}")
     if major == 6:
-        return DocSet("qt6", "Qt 6", "/qt-6/")
+        return DocSet("qt6", "Qt 6")
     raise ValueError(f"Unsupported Qt major version: {major}")
 
 

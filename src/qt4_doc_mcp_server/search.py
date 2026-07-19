@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # FTS5 schema with unicode61 tokenizer for proper text handling
 FTS5_SCHEMA = (
     "CREATE VIRTUAL TABLE IF NOT EXISTS docs USING fts5("
-    "title, headings, body, url UNINDEXED, path_rel UNINDEXED, "
+    "title, headings, body, path UNINDEXED, "
     "tokenize='unicode61 remove_diacritics 2'"
     ");"
 )
@@ -39,12 +39,15 @@ META_SCHEMA = (
     ");"
 )
 
+# Bump when search result path semantics change.
+DOCUMENT_PATH_FORMAT_VERSION = "1"
+
 
 @dataclass
 class SearchResult:
     """Single search result with ranking and context."""
     title: str
-    url: str
+    path: str
     score: float
     context: str
 
@@ -153,7 +156,7 @@ def build_index(
         db_path: Path to SQLite database file
         docs_base: Root directory containing HTML files
         progress_callback: Optional callable(current, total, path) for progress updates
-        docset: Active documentation set used to construct canonical URLs
+        docset: Active documentation set recorded in index provenance
 
     Returns:
         dict with stats: indexed, skipped, errors
@@ -198,7 +201,11 @@ def build_index(
             )
             cur.execute(
                 "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-                ("docset_prefix", docset.canonical_prefix)
+                ("docset", docset.key)
+            )
+            cur.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+                ("document_path_format_version", DOCUMENT_PATH_FORMAT_VERSION)
             )
 
             # Index each file
@@ -218,15 +225,14 @@ def build_index(
                         stats["skipped"] += 1
                         continue
 
-                    # Compute relative path and canonical URL
+                    # Compute the exact root-relative local document path.
                     path_rel = html_path.relative_to(docs_base).as_posix()
-                    canonical_url = f"{docset.canonical_base_url}{path_rel}"
-
-                    # Insert into FTS5 table
+                    # Insert the exact root-relative local path.  Offline Qt 5/6
+                    # bundles are module-nested even though their web URLs are flat.
                     cur.execute(
-                        "INSERT INTO docs (title, headings, body, url, path_rel) "
-                        "VALUES (?, ?, ?, ?, ?)",
-                        (title, headings, body, canonical_url, path_rel)
+                        "INSERT INTO docs (title, headings, body, path) "
+                        "VALUES (?, ?, ?, ?)",
+                        (title, headings, body, path_rel)
                     )
 
                     stats["indexed"] += 1
@@ -270,7 +276,8 @@ def index_matches_docs(
             rows = dict(con.execute("SELECT key, value FROM meta"))
         return (
             rows.get("doc_base") == str(docs_base)
-            and rows.get("docset_prefix") == docset.canonical_prefix
+            and rows.get("docset") == docset.key
+            and rows.get("document_path_format_version") == DOCUMENT_PATH_FORMAT_VERSION
         )
     except (sqlite3.Error, OSError):
         return False
@@ -315,7 +322,7 @@ def search(
                 """
                 SELECT
                     title,
-                    url,
+                    path,
                     bm25(docs) as score,
                     snippet(docs, 2, '<b>', '</b>', '…', 10) as context
                 FROM docs
@@ -328,7 +335,7 @@ def search(
 
             results = []
             for row in cur.fetchall():
-                title, url, score, context = row
+                title, path, score, context = row
 
                 # Clean up context snippet
                 if not context or context.strip() == "":
@@ -337,7 +344,7 @@ def search(
 
                 results.append(SearchResult(
                     title=title or "Untitled",
-                    url=url,
+                    path=path,
                     score=abs(score),  # BM25 returns negative scores; abs for clarity
                     context=context
                 ))

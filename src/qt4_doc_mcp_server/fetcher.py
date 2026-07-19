@@ -1,59 +1,31 @@
-"""Offline fetcher utilities: canonical URL validation and path mapping."""
+"""Offline fetcher utilities: safe documentation-path validation and loading."""
 from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
-from urllib.parse import urlparse
-import posixpath
 
-from .docsets import CANONICAL_HOST, DocSet, QT4_DOCSET
-from .errors import FetchError, InvalidURLError, NotAllowedError, NotFoundError
-
-# Retained for integrations that imported the historical constant.
-ARCHIVE_PREFIX = QT4_DOCSET.canonical_prefix
+from .errors import FetchError, InvalidPathError, NotAllowedError, NotFoundError
 
 
-def canonicalize_url(url: str, docset: DocSet = QT4_DOCSET) -> str:
-    """Validate and normalize a URL belonging to the active local docset."""
-    u = urlparse(url)
-    host = (u.netloc or "").lower()
-    if host != CANONICAL_HOST or u.scheme not in {"http", "https"}:
-        raise InvalidURLError("URL host or scheme not allowed")
-    prefix = docset.canonical_prefix
-    if not u.path.startswith(prefix):
-        raise NotAllowedError(f"URL not under active {docset.display_name} documentation path")
+def canonicalize_path(path: str) -> str:
+    """Validate and normalize a root-relative local documentation path."""
+    if not path or not path.strip():
+        raise InvalidPathError("Documentation path must not be empty")
+    if "#" in path or "?" in path:
+        raise InvalidPathError("Pass fragments separately; path must not contain '#' or '?'")
+    if "://" in path:
+        raise InvalidPathError("Expected a local documentation path, not a URL")
 
-    # Normalize path: collapse duplicate slashes, etc.
-    path = posixpath.normpath(u.path)
-    required_root = prefix.rstrip("/")
-    if path != required_root and not path.startswith(required_root + "/"):
-        raise NotAllowedError("Normalized path escaped documentation prefix")
-
-    # Rebuild URL with normalized parts, preserve query/fragment.
-    norm = f"{u.scheme}://{CANONICAL_HOST}{path}"
-    if u.params:
-        norm += ";" + u.params
-    if u.query:
-        norm += "?" + u.query
-    if u.fragment:
-        norm += "#" + u.fragment
-    return norm
+    normalized = path.replace("\\", "/").lstrip("/")
+    posix_path = PurePosixPath(normalized)
+    if posix_path.is_absolute() or any(part in {"", ".", ".."} for part in posix_path.parts):
+        raise NotAllowedError("Documentation path must stay under QT_DOC_BASE")
+    return posix_path.as_posix()
 
 
-def url_to_path(canonical_url: str, base: Path, docset: DocSet = QT4_DOCSET) -> Path:
-    """Map an active-docset URL to a local file path under ``QT_DOC_BASE``."""
-    u = urlparse(canonical_url)
-    prefix = docset.canonical_prefix
-    if not u.path.startswith(prefix):
-        raise NotAllowedError(f"URL not under active {docset.display_name} documentation path")
-    rel = u.path[len(prefix) :].lstrip("/")
-    # Prevent traversal using PurePosixPath (platform-independent).
-    posix_path = PurePosixPath("/" + rel)
-    try:
-        safe = posix_path.relative_to("/")
-    except ValueError as exc:
-        raise NotAllowedError("Path traversal attempt detected") from exc
-    # Convert to local path (handles Windows/Unix differences).
-    resolved = (base / Path(str(safe))).resolve()
+def path_to_local_path(document_path: str, base: Path) -> Path:
+    """Map a validated documentation path to a local file under ``QT_DOC_BASE``."""
+    safe_path = canonicalize_path(document_path)
+    resolved = (base / Path(safe_path)).resolve()
     try:
         resolved.relative_to(base.resolve())
     except ValueError as exc:  # pragma: no cover - safety guard

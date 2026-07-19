@@ -20,9 +20,9 @@ class DocumentationError(Exception):
         return f"{self.code}: {self.message}"
 
 
-class InvalidURLError(DocumentationError):
+class InvalidPathError(DocumentationError):
     def __init__(self, message: str):
-        super().__init__("InvalidURL", message)
+        super().__init__("InvalidPath", message)
 
 
 class NotAllowedError(DocumentationError):
