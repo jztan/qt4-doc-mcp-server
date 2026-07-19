@@ -18,6 +18,7 @@ __pycache__
 .mcp.json
 .mcpregistry_*
 .claude
+.superpowers
 .python-version
 qt4-docs-html
 tests

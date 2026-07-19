@@ -3,21 +3,22 @@ FROM python:3.13-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    UV_CACHE_DIR=/opt/uv-cache
+    UV_PROJECT_ENVIRONMENT=/opt/venv
 
 # Install uv package manager
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Copy only what the package build needs (LICENSE and README are
-# referenced by pyproject.toml metadata)
+# Install locked dependencies first so source edits reuse this layer
 COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project --no-editable
+
+# Then install the project itself (README and LICENSE are referenced by
+# pyproject.toml metadata)
 COPY src/ ./src/
 COPY README.md LICENSE ./
-
-RUN uv venv /opt/venv && \
-    uv pip install . --python=/opt/venv/bin/python
+RUN uv sync --locked --no-dev --no-editable
 
 # Production stage
 FROM python:3.13-slim AS runtime
@@ -54,7 +55,7 @@ RUN mkdir -p /docs /data && \
 
 USER appuser
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
     CMD curl -f http://localhost:${SERVER_PORT:-8000}/health || exit 1
 
 # Informational only; override with SERVER_PORT env var
