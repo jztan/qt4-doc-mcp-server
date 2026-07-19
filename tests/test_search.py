@@ -15,6 +15,7 @@ from qt4_doc_mcp_server.search import (
     search,
     SearchResult,
     SearchUnavailable,
+    _open_read_only,
     index_is_current,
 )
 from qt4_doc_mcp_server.tools import configure_from_settings, search_documentation
@@ -130,6 +131,19 @@ def test_build_index_with_progress_callback(sample_settings: Settings) -> None:
 
     assert len(progress_calls) == 3, "Should call progress for each file"
     assert stats["indexed"] == 3
+
+
+def test_fts_connections_are_read_only(sample_settings: Settings) -> None:
+    """Search paths must not acquire write access to a shared FTS database."""
+    db_path = sample_settings.index_db_path
+    build_index(db_path, sample_settings.qt_doc_base)
+
+    con = _open_read_only(db_path)
+    try:
+        with pytest.raises(sqlite3.OperationalError):
+            con.execute("DELETE FROM meta")
+    finally:
+        con.close()
 
 
 def test_search_returns_relevant_results(sample_settings: Settings) -> None:

@@ -29,6 +29,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ### Fixed
 - Removed unused imports and a membership-test style issue flagged by ruff 0.15
+- Open search and index-format SQLite connections in read-only mode, allowing concurrent server instances without write access
 - Close SQLite connections after index-format checks
 - Clear the Markdown cache completion marker before a forced, limited warmup
 - Distinguish an outdated search index from a missing one in `qt-doc-cli` output

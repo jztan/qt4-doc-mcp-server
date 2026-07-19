@@ -65,6 +65,11 @@ class IndexError(DocumentationError):
         super().__init__("IndexError", message)
 
 
+def _open_read_only(db_path: Path) -> sqlite3.Connection:
+    """Open an existing SQLite database without acquiring write capability."""
+    return sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)
+
+
 def ensure_index(db_path: Path) -> None:
     """Create the database schema if it doesn't exist."""
     try:
@@ -262,7 +267,7 @@ def index_is_current(db_path: Path) -> bool:
         return False
     try:
         # sqlite3.Connection's context manager does not close the connection.
-        with closing(sqlite3.connect(str(db_path))) as con:
+        with closing(_open_read_only(db_path)) as con:
             rows = dict(con.execute("SELECT key, value FROM meta"))
         return rows.get("index_format_version") == INDEX_FORMAT_VERSION
     except (sqlite3.Error, OSError):
@@ -293,7 +298,7 @@ def search(
         return []
 
     try:
-        con = sqlite3.connect(str(db_path))
+        con = _open_read_only(db_path)
         try:
             cur = con.cursor()
 
