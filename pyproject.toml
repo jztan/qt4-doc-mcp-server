@@ -39,10 +39,10 @@ Issues = "https://github.com/jztan/qt4-doc-mcp-server/issues"
 Changelog = "https://github.com/jztan/qt4-doc-mcp-server/blob/master/CHANGELOG.md"
 
 [project.scripts]
-qt-doc-mcp-server = "qt4_doc_mcp_server.main:run"
-qt-doc-warm-md = "qt4_doc_mcp_server.cli:warm_md_main"
-qt-doc-build-index = "qt4_doc_mcp_server.cli:build_index_main"
+qt-doc-mcp = "qt4_doc_mcp_server.main:run"
 qt-doc-cli = "qt4_doc_mcp_server.search_cli:search_cli_main"
+qt-doc-build-index = "qt4_doc_mcp_server.cli:build_index_main"
+qt-doc-warm-md = "qt4_doc_mcp_server.cli:warm_md_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/qt4_doc_mcp_server"]
