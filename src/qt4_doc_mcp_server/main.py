@@ -19,7 +19,14 @@ if __package__ in (None, ""):
 
 from dotenv import load_dotenv
 
-from .config import active_docset, load_settings, ensure_dirs, validate_settings, probe_fts5
+from .config import (
+    active_docset,
+    ensure_dirs,
+    index_db_path,
+    load_settings,
+    probe_fts5,
+    validate_settings,
+)
 from .server import ensure_tools_loaded, mcp
 from .tools import configure_from_settings
 
@@ -61,8 +68,6 @@ def run(argv: list[str] | None = None) -> None:
 
     # Load and validate settings
     settings = load_settings()
-    ensure_dirs(settings)
-
     ok, warns = validate_settings(settings)
     for w in warns:
         logger.warning(w)
@@ -70,6 +75,7 @@ def run(argv: list[str] | None = None) -> None:
         logger.error("Startup validation failed; fix settings and retry.")
         raise SystemExit(2)
 
+    ensure_dirs(settings)
     configure_from_settings(settings)
 
     # Probe FTS5 and warn if unavailable
@@ -97,7 +103,7 @@ def run(argv: list[str] | None = None) -> None:
             from .search import index_matches_docs
 
             if not index_matches_docs(
-                settings.index_db_path,
+                index_db_path(settings),
                 settings.qt_doc_base,
                 active_docset(settings),
             ):
@@ -105,7 +111,7 @@ def run(argv: list[str] | None = None) -> None:
                 if rc != 0:
                     logger.warning("Index build exited with code %s", rc)
             else:
-                logger.info("Search index already exists at %s", settings.index_db_path)
+                logger.info("Search index already exists at %s", index_db_path(settings))
         except Exception as e:
             logger.warning("Index build failed: %s", e)
 

@@ -6,7 +6,7 @@ import pytest
 from mcp.server.fastmcp.exceptions import ToolError
 
 from qt4_doc_mcp_server.cache import LRUCache, md_store_meta_path, md_store_path
-from qt4_doc_mcp_server.config import Settings, ensure_dirs
+from qt4_doc_mcp_server.config import Settings, ensure_dirs, markdown_cache_dir
 from qt4_doc_mcp_server.doc_service import get_markdown_for_path
 from qt4_doc_mcp_server.tools import configure_from_settings, read_documentation
 
@@ -31,8 +31,6 @@ def sample_settings(tmp_path: Path) -> Settings:
     (tmp_path / "qsample.html").write_text(html, encoding="utf-8")
     settings = Settings(
         qt_doc_base=tmp_path,
-        md_cache_dir=tmp_path / "cache" / "md",
-        index_db_path=tmp_path / "index" / "fts.sqlite",
         preindex_docs=False,
         preconvert_md=False,
         md_cache_size=4,
@@ -54,8 +52,10 @@ def test_metadata_persists_through_cache(sample_settings: Settings) -> None:
     assert doc.links
     assert doc.links[0]["path"] == "qtother.html#anchor"
 
-    meta_path = md_store_meta_path(sample_settings.md_cache_dir, path)
-    md_path = md_store_path(sample_settings.md_cache_dir, path)
+    meta_path = md_store_meta_path(markdown_cache_dir(sample_settings), path)
+    md_path = md_store_path(markdown_cache_dir(sample_settings), path)
+    assert meta_path == markdown_cache_dir(sample_settings) / "qsample.meta.json"
+    assert md_path == markdown_cache_dir(sample_settings) / "qsample.md"
     assert meta_path.exists()
     assert md_path.exists()
 
@@ -66,7 +66,7 @@ def test_metadata_persists_through_cache(sample_settings: Settings) -> None:
 
 def test_section_only_not_cached(sample_settings: Settings) -> None:
     path = _document_path()
-    meta_path = md_store_meta_path(sample_settings.md_cache_dir, path)
+    meta_path = md_store_meta_path(markdown_cache_dir(sample_settings), path)
 
     section_doc = get_markdown_for_path(
         path,
@@ -135,8 +135,6 @@ def test_read_documentation_applies_default_max_length(tmp_path: Path) -> None:
     
     settings = Settings(
         qt_doc_base=tmp_path,
-        md_cache_dir=tmp_path / "cache" / "md",
-        index_db_path=tmp_path / "index" / "fts.sqlite",
         preindex_docs=False,
         preconvert_md=False,
         md_cache_size=4,
@@ -173,8 +171,6 @@ def test_read_documentation_explicit_max_length_overrides_default(tmp_path: Path
     
     settings = Settings(
         qt_doc_base=tmp_path,
-        md_cache_dir=tmp_path / "cache" / "md",
-        index_db_path=tmp_path / "index" / "fts.sqlite",
         preindex_docs=False,
         preconvert_md=False,
         md_cache_size=4,
@@ -211,8 +207,6 @@ def test_read_documentation_pagination_with_start_index(tmp_path: Path) -> None:
     
     settings = Settings(
         qt_doc_base=tmp_path,
-        md_cache_dir=tmp_path / "cache" / "md",
-        index_db_path=tmp_path / "index" / "fts.sqlite",
         preindex_docs=False,
         preconvert_md=False,
         md_cache_size=4,

@@ -81,8 +81,6 @@ def sample_settings(tmp_path: Path, sample_docs: Path) -> Settings:
     """Create test settings with sample docs."""
     settings = Settings(
         qt_doc_base=sample_docs,
-        md_cache_dir=tmp_path / "cache" / "md",
-        index_db_path=tmp_path / "index" / "fts.sqlite",
         preindex_docs=False,
         preconvert_md=False,
         md_cache_size=4,

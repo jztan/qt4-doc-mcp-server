@@ -3,9 +3,8 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
-import hashlib
 import json
 import os
 
@@ -37,14 +36,22 @@ class LRUCache:
             self._data.popitem(last=False)
 
 
+def _cache_source_path(base: Path, document_path: str) -> Path:
+    """Return a safe cache path that mirrors a root-relative HTML path."""
+    relative = PurePosixPath(document_path)
+    if relative.is_absolute() or not relative.parts or any(part in {".", ".."} for part in relative.parts):
+        raise ValueError(f"Invalid document path for cache: {document_path!r}")
+    return base.joinpath(*relative.parts)
+
+
 def md_store_path(base: Path, document_path: str) -> Path:
-    h = hashlib.sha256(document_path.encode("utf-8")).hexdigest()
-    return base / h[:2] / f"{h}.md"
+    """Return the mirrored Markdown path for a local HTML document path."""
+    return _cache_source_path(base, document_path).with_suffix(".md")
 
 
 def md_store_meta_path(base: Path, document_path: str) -> Path:
-    h = hashlib.sha256(document_path.encode("utf-8")).hexdigest()
-    return base / h[:2] / f"{h}.meta.json"
+    """Return the mirrored metadata path for a local HTML document path."""
+    return _cache_source_path(base, document_path).with_suffix(".meta.json")
 
 
 def md_store_read(base: Path, document_path: str) -> CachedDoc | None:

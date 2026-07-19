@@ -9,7 +9,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 
 from .server import mcp
 from .cache import LRUCache, CachedDoc
-from .config import Settings, active_docset, load_settings
+from .config import Settings, active_docset, index_db_path, load_settings
 from .doc_service import get_markdown_for_path
 from .errors import (
     DocumentationError,
@@ -161,14 +161,14 @@ async def search_documentation(
 
     try:
         if not index_matches_docs(
-            settings.index_db_path,
+            index_db_path(settings),
             settings.qt_doc_base,
             active_docset(settings),
         ):
             raise SearchUnavailable("Search index is missing or belongs to a different documentation set")
 
         results = search(
-            db_path=settings.index_db_path,
+            db_path=index_db_path(settings),
             query=query,
             limit=limit,
             scope=scope,

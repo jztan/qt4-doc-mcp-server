@@ -6,10 +6,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import json
 import logging
 import os
-import shutil
 import sqlite3
 from typing import Tuple
 
@@ -23,14 +21,17 @@ class Settings:
     server_host: str = "127.0.0.1"
     server_port: int = 8000
     qt_doc_base: Path | None = None
-    index_db_path: Path = Path(".index/fts.sqlite")
-    md_cache_dir: Path = Path(".cache/md")
     preindex_docs: bool = True
     preconvert_md: bool = True
     md_cache_size: int = 512
     mcp_log_level: str = "WARNING"
     default_max_markdown_length: int = 20000
     docset: DocSet | None = None
+
+    @property
+    def index_db_path(self) -> Path:
+        """Derived FTS path; it is intentionally not user-configurable."""
+        return index_db_path(self)
 
 
 def load_settings() -> Settings:
@@ -54,8 +55,6 @@ def load_settings() -> Settings:
     qdb = os.getenv("QT_DOC_BASE")
     s.qt_doc_base = Path(qdb) if qdb else None
     s.docset = detect_docset(s.qt_doc_base)
-    s.index_db_path = Path(os.getenv("INDEX_DB_PATH", str(s.index_db_path)))
-    s.md_cache_dir = Path(os.getenv("MD_CACHE_DIR", str(s.md_cache_dir)))
     s.preindex_docs = os.getenv("PREINDEX_DOCS", str(s.preindex_docs)).lower() == "true"
     s.preconvert_md = os.getenv("PRECONVERT_MD", str(s.preconvert_md)).lower() == "true"
     s.md_cache_size = int(os.getenv("MD_CACHE_SIZE", str(s.md_cache_size)))
@@ -71,33 +70,31 @@ def active_docset(settings: Settings) -> DocSet:
     return settings.docset
 
 
-def _cache_provenance(settings: Settings) -> dict[str, str]:
-    base = settings.qt_doc_base
-    return {
-        "doc_base": str(base.resolve()) if base else "",
-        "docset": active_docset(settings).key,
-    }
+def mcp_state_dir(settings: Settings) -> Path:
+    """Return the derived-state directory for the active local documentation set."""
+    if settings.qt_doc_base is None:
+        raise ValueError("QT_DOC_BASE must be configured before using derived state")
+    return settings.qt_doc_base / ".index"
+
+
+def index_db_path(settings: Settings) -> Path:
+    """Return the FTS database path for the active local documentation set."""
+    return mcp_state_dir(settings) / "fts.sqlite"
+
+
+def markdown_cache_dir(settings: Settings) -> Path:
+    """Return the Markdown cache directory for the active local documentation set."""
+    return mcp_state_dir(settings) / "md"
 
 
 def ensure_dirs(settings: Settings) -> None:
-    """Ensure storage directories exist and invalidate a cache from another docset."""
+    """Ensure the active documentation set's derived-state directories exist."""
+    active_docset(settings)
     try:
-        settings.index_db_path.parent.mkdir(parents=True, exist_ok=True)
-    except Exception:
-        pass
-    try:
-        settings.md_cache_dir.mkdir(parents=True, exist_ok=True)
-        marker = settings.md_cache_dir / ".provenance.json"
-        provenance = _cache_provenance(settings)
-        previous = None
-        if marker.exists():
-            previous = json.loads(marker.read_text(encoding="utf-8"))
-        if previous is not None and previous != provenance:
-            shutil.rmtree(settings.md_cache_dir)
-            settings.md_cache_dir.mkdir(parents=True, exist_ok=True)
-        marker.write_text(json.dumps(provenance, sort_keys=True), encoding="utf-8")
-    except Exception:
-        # Cache is an optimisation; failure to prepare it must not prevent startup.
+        mcp_state_dir(settings).mkdir(parents=True, exist_ok=True)
+        markdown_cache_dir(settings).mkdir(parents=True, exist_ok=True)
+    except (OSError, ValueError):
+        # Derived state is optional until an index or cache entry is written.
         pass
 
 

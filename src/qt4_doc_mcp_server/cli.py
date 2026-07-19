@@ -5,7 +5,7 @@ import sys
 import time
 from pathlib import Path
 
-from .config import active_docset, load_settings, ensure_dirs, validate_settings
+from .config import active_docset, ensure_dirs, index_db_path, load_settings, validate_settings
 from .doc_service import get_markdown_for_path
 from .search import build_index, index_matches_docs
 
@@ -22,7 +22,6 @@ def warm_md_main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     settings = load_settings()
-    ensure_dirs(settings)
     ok, warns = validate_settings(settings)
     for w in warns:
         print(f"Warning: {w}", file=sys.stderr)
@@ -30,6 +29,7 @@ def warm_md_main(argv: list[str] | None = None) -> int:
         print("Invalid settings; check QT_DOC_BASE in .env", file=sys.stderr)
         return 2
 
+    ensure_dirs(settings)
     root = settings.qt_doc_base or Path('.')
     files = list(_iter_html_files(root))
     if args.limit and args.limit > 0:
@@ -83,7 +83,6 @@ def build_index_main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     settings = load_settings()
-    ensure_dirs(settings)
     ok, warns = validate_settings(settings)
     for w in warns:
         print(f"Warning: {w}", file=sys.stderr)
@@ -91,12 +90,13 @@ def build_index_main(argv: list[str] | None = None) -> int:
         print("Invalid settings; check QT_DOC_BASE in .env", file=sys.stderr)
         return 2
 
+    ensure_dirs(settings)
     docs_base = settings.qt_doc_base
     if not docs_base:
         print("QT_DOC_BASE not configured", file=sys.stderr)
         return 2
 
-    index_path = settings.index_db_path
+    index_path = index_db_path(settings)
     docset = active_docset(settings)
 
     # Reuse only an index built for this exact documentation root and docset.

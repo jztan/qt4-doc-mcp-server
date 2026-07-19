@@ -350,8 +350,6 @@ def stage_docs(doc_html: Path, dest: Path, copy: bool) -> Path:
 def write_env(env_path: Path, qt_doc_base: Path) -> None:
     content = (
         f"QT_DOC_BASE={qt_doc_base}\n"
-        "INDEX_DB_PATH=.index/fts.sqlite\n"
-        "MD_CACHE_DIR=.cache/md\n"
         "PREINDEX_DOCS=true\n"
         "PRECONVERT_MD=true\n"
         "SERVER_HOST=127.0.0.1\n"

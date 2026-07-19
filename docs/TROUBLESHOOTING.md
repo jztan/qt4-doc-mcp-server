@@ -15,7 +15,7 @@ This guide covers common issues you might encounter when using the Qt 4.8.4 Docu
 
 ### Search index not found
 
-**Problem:** `SearchUnavailable: Search index not found at .index/fts.sqlite`
+**Problem:** `SearchUnavailable: Search index not found at $QT_DOC_BASE/.index/fts.sqlite`
 
 **Cause:** The FTS5 search index hasn't been built yet.
 
@@ -32,10 +32,10 @@ echo "PREINDEX_DOCS=true" >> .env
 **Verification:**
 ```bash
 # Check if index file exists
-ls -lh .index/fts.sqlite
+ls -lh "$QT_DOC_BASE/.index/fts.sqlite"
 
 # Expected output shows file size (typically 20-50MB)
-# -rw-r--r--  1 user  staff   32M Oct 26 08:45 .index/fts.sqlite
+# -rw-r--r--  1 user  staff   32M Oct 26 08:45 fts.sqlite
 ```
 
 ### Search returns no results
@@ -47,11 +47,11 @@ ls -lh .index/fts.sqlite
 **Solution:**
 ```bash
 # Rebuild the search index
-rm -f .index/fts.sqlite
+rm -f "$QT_DOC_BASE/.index/fts.sqlite"
 qt4-doc-build-index --force
 
 # Verify index has content
-sqlite3 .index/fts.sqlite "SELECT COUNT(*) FROM docs;"
+sqlite3 "$QT_DOC_BASE/.index/fts.sqlite" "SELECT COUNT(*) FROM docs;"
 # Should return a number > 0 (typically around 2000-3000)
 ```
 
@@ -127,7 +127,7 @@ pip list | grep -E "beautifulsoup4|lxml|markdownify"
 pip install beautifulsoup4 lxml markdownify
 
 # 3. Clear Markdown cache and regenerate
-rm -rf .cache/md
+rm -rf "$QT_DOC_BASE/.index/md"
 qt4-doc-warm-md
 ```
 
@@ -143,7 +143,7 @@ qt4-doc-warm-md
 cat $QT_DOC_BASE/qstring.html | head -50
 
 # 2. Clear cache for specific page
-rm -rf .cache/md/$(echo -n "qstring.html" | md5)*/
+rm -f "$QT_DOC_BASE/.index/md/qstring.md" "$QT_DOC_BASE/.index/md/qstring.meta.json"
 
 # 3. Test conversion manually
 uv run python -c "
@@ -233,15 +233,15 @@ curl -s http://127.0.0.1:$(grep SERVER_PORT .env | cut -d= -f2)/health
 **Solution:**
 ```bash
 # Full reset (safest option)
-rm -rf .cache/md .index/fts.sqlite
+rm -rf "$QT_DOC_BASE/.index"
 
 # Rebuild everything
 qt4-doc-build-index
 qt4-doc-warm-md
 
 # Verify rebuild
-ls -lh .cache/md/ | head
-ls -lh .index/fts.sqlite
+ls -lh "$QT_DOC_BASE/.index/md/" | head
+ls -lh "$QT_DOC_BASE/.index/fts.sqlite"
 ```
 
 ### Stale cache after docs update
@@ -253,10 +253,10 @@ ls -lh .index/fts.sqlite
 **Solution:**
 ```bash
 # Clear Markdown cache
-rm -rf .cache/md
+rm -rf "$QT_DOC_BASE/.index/md"
 
 # Rebuild search index
-rm -f .index/fts.sqlite
+rm -f "$QT_DOC_BASE/.index/fts.sqlite"
 qt4-doc-build-index
 
 # Warm cache with new content
@@ -274,13 +274,13 @@ qt4-doc-warm-md
 **Solution:**
 ```bash
 # Rebuild and optimize index
-rm -f .index/fts.sqlite
+rm -f "$QT_DOC_BASE/.index/fts.sqlite"
 qt4-doc-build-index
 
 # The build process automatically runs OPTIMIZE and VACUUM
 
 # Verify index is optimized
-sqlite3 .index/fts.sqlite "PRAGMA integrity_check;"
+sqlite3 "$QT_DOC_BASE/.index/fts.sqlite" "PRAGMA integrity_check;"
 # Should return: ok
 ```
 

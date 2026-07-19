@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .cache import CachedDoc, LRUCache, md_store_read, md_store_write
-from .config import Settings
+from .config import Settings, markdown_cache_dir
 from .convert import extract_main, normalize_links, slice_fragment, to_markdown
 from .errors import DocumentationError, FetchError, ParseError
 from .fetcher import canonicalize_path, load_html, path_to_local_path
@@ -36,7 +36,8 @@ def get_markdown_for_path(
         if cached:
             return cached
 
-    stored = md_store_read(settings.md_cache_dir, document_path) if cache_enabled else None
+    cache_dir = markdown_cache_dir(settings)
+    stored = md_store_read(cache_dir, document_path) if cache_enabled else None
     if stored:
         if md_lru:
             md_lru.put(document_path, stored)
@@ -77,7 +78,7 @@ def get_markdown_for_path(
     )
 
     if cache_enabled:
-        md_store_write(settings.md_cache_dir, document_path, full_doc)
+        md_store_write(cache_dir, document_path, full_doc)
         if md_lru:
             md_lru.put(document_path, full_doc)
 

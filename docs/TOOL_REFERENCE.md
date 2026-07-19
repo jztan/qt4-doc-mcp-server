@@ -266,7 +266,7 @@ All tools return errors in standard MCP format:
 {
   "error": {
     "code": "SearchUnavailable",
-    "message": "Search index not found at .index/fts.sqlite. Run 'qt4-doc-build-index' to build the index."
+    "message": "Search index not found under $QT_DOC_BASE/.index/. Run 'qt4-doc-build-index' to build the index."
   }
 }
 ```
