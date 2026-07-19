@@ -1,5 +1,7 @@
 # Qt Documentation MCP Server
 
+mcp-name: io.github.jztan/qt4-doc-mcp-server
+
 [![PyPI Version](https://img.shields.io/pypi/v/qt4-doc-mcp-server.svg)](https://pypi.org/project/qt4-doc-mcp-server/)
 [![License](https://img.shields.io/github/license/jztan/qt4-doc-mcp-server.svg)](LICENSE)
 [![Python Version](https://img.shields.io/pypi/pyversions/qt4-doc-mcp-server.svg)](https://pypi.org/project/qt4-doc-mcp-server/)
