@@ -2,17 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 ### Added
+- Python 3.14 support: trove classifier and CI test matrix entry (full test suite passes on 3.14.2)
 - Release automation script (`scripts/release.py`): gitflow release with preflight checks, version bumping, LLM-drafted release notes with approval loop, PyPI/workflow watching, GitHub release creation, and MCP Registry publish
 - Dependency audit script (`scripts/audit.sh`) using pip-audit, run in CI and release preflight
 - `server.json` manifest for MCP Registry publication
 - Tests for release script helpers (version bumping, changelog stamping, notes persistence)
-- Qt 5 and Qt 6 documentation support with automatic docset detection
-- Stdio transport and an agent-friendly `qt-doc-cli` full-text search command
-- `QT_DOC_STATE_DIR` override for storing all derived state outside read-only documentation roots
+- Qt 5 and Qt 6 documentation support with automatic docset detection, so the
+  server now works against any Qt 4/5/6 `doc/html` tree pointed at by
+  `QT_DOC_BASE` ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
+- Stdio transport for MCP clients that spawn the server as a subprocess, and an
+  agent-friendly `qt-doc-cli` full-text search command that works without
+  installing an MCP client ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
+- `QT_DOC_STATE_DIR` override for storing all derived state (search index and
+  Markdown cache) outside read-only documentation roots ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
 
 ### Changed
 - Updated `mcp[cli]` dependency: 1.19.0 → 1.28.1 (capped below 2.0 pre-releases)
@@ -22,23 +29,43 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Updated `markdownify` dependency: 1.2.0 → 1.2.3
 - Updated `lxml` dependency: 6.0.0 → 6.1.1
 - Updated dev dependencies: pytest 9.x, pytest-asyncio 1.4, ruff 0.15
-- Document identifiers and MCP tool parameters now use root-relative Markdown `path` values instead of online `url` values
-- Search indexes and Markdown caches now default to `$QT_DOC_BASE/.index`
-- `PRECONVERT_MD` now defaults to `false`
-- New CLI commands use the `qt-doc-*` prefix; `qt4-doc-mcp-server` remains as a compatibility alias
+- New CLI commands use the `qt-doc-*` prefix; `qt4-doc-mcp-server` remains as a
+  compatibility alias ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
+
+### Breaking
+- Document identifiers and MCP tool parameters now use root-relative Markdown
+  `path` values instead of online `url` values. Update MCP callers to pass and
+  consume `path` values, and the generated Markdown store is now browsable
+  directly on disk ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
+- Search indexes and Markdown caches now default to `$QT_DOC_BASE/.index`. Old
+  working-directory `.index` and `.cache` directories are not migrated and can
+  be removed after rebuilding derived state in the new location (or in
+  `QT_DOC_STATE_DIR`) ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
+- `INDEX_DB_PATH` and `MD_CACHE_DIR` in existing `.env` files are now ignored
+  with a startup warning; replace both with `QT_DOC_STATE_DIR` when a writable
+  override is needed ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
+- `PRECONVERT_MD` now defaults to `false`; set `PRECONVERT_MD=true` explicitly
+  to retain the previous eager Markdown warmup behavior ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
 
 ### Fixed
 - Removed unused imports and a membership-test style issue flagged by ruff 0.15
-- Open search and index-format SQLite connections in read-only mode, allowing concurrent server instances without write access
-- Close SQLite connections after index-format checks
-- Clear the Markdown cache completion marker before a forced, limited warmup
-- Distinguish an outdated search index from a missing one in `qt-doc-cli` output
+- Search and index-format SQLite connections are now opened read-only, allowing
+  concurrent server instances without write access to the index
+  ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
+- SQLite connections are closed after index-format checks
+  ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
+- The Markdown cache completion marker is cleared before a forced, limited
+  warmup, so a later full warmup is not skipped
+  ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
+- `qt-doc-cli` now distinguishes an outdated search index from a missing one in
+  its error output ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
 
-### Migration notes for 0.6.0
-- Set `PRECONVERT_MD=true` explicitly to retain the previous eager Markdown warmup behavior.
-- Old working-directory `.index` and `.cache` directories are not migrated and can be removed after rebuilding derived state in `$QT_DOC_BASE/.index` (or `QT_DOC_STATE_DIR`).
-- `INDEX_DB_PATH` and `MD_CACHE_DIR` in existing `.env` files are now ignored with a startup warning; replace both with `QT_DOC_STATE_DIR` when a writable override is needed.
-- Update MCP callers to pass and consume root-relative `path` values instead of `url` values.
+### Contributors
+- @mrexodia, added Qt 5 and Qt 6 documentation support, stdio transport and the
+  `qt-doc-cli` command, moved derived state under `$QT_DOC_BASE/.index` with a
+  `QT_DOC_STATE_DIR` override, switched document identifiers to root-relative
+  `path` values, and hardened concurrent index access
+  ([#5](https://github.com/jztan/qt4-doc-mcp-server/pull/5))
 
 ## [0.5.0] - 2025-10-26
 ### Added
