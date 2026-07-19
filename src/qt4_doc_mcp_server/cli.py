@@ -40,13 +40,13 @@ def warm_md_main(argv: list[str] | None = None) -> int:
         print("No HTML files found under QT_DOC_BASE", file=sys.stderr)
         return 1
 
-    print(f"Warming Markdown store from {total} HTML files...")
+    print(f"Warming Markdown store from {total} HTML files...", file=sys.stderr)
     t0 = time.monotonic()
     total_md = 0
     last_len = 0
     for i, f in enumerate(files, 1):
         rel = f.relative_to(root).as_posix()
-        url = docset.canonical_base_url + rel
+        url = docset.canonical_base_url + docset.url_relative_path(rel)
         try:
             doc = get_markdown_for_url(url, settings, None)
             total_md += len(doc.markdown)
@@ -64,7 +64,11 @@ def warm_md_main(argv: list[str] | None = None) -> int:
 
     sys.stderr.write("\n")
     elapsed = time.monotonic() - t0
-    print(f"Done. Wrote ~{total_md} chars of Markdown in {int(elapsed)//60:02d}:{int(elapsed)%60:02d}")
+    print(
+        f"Done. Wrote ~{total_md} chars of Markdown in "
+        f"{int(elapsed)//60:02d}:{int(elapsed)%60:02d}",
+        file=sys.stderr,
+    )
     return 0
 
 
@@ -105,8 +109,8 @@ def build_index_main(argv: list[str] | None = None) -> int:
     if index_path.exists() and not args.force:
         print("Existing index belongs to a different documentation set; rebuilding.", file=sys.stderr)
 
-    print(f"Building search index from {docs_base}")
-    print(f"Index will be written to {index_path}")
+    print(f"Building search index from {docs_base}", file=sys.stderr)
+    print(f"Index will be written to {index_path}", file=sys.stderr)
 
     t0 = time.monotonic()
     last_path = None
@@ -137,16 +141,17 @@ def build_index_main(argv: list[str] | None = None) -> int:
 
         elapsed = time.monotonic() - t0
         print(
-            f"\nIndex build complete in {int(elapsed)//60:02d}:{int(elapsed)%60:02d}"
+            f"\nIndex build complete in {int(elapsed)//60:02d}:{int(elapsed)%60:02d}",
+            file=sys.stderr,
         )
-        print(f"  Indexed: {stats['indexed']}")
-        print(f"  Skipped: {stats['skipped']}")
-        print(f"  Errors:  {stats['errors']}")
+        print(f"  Indexed: {stats['indexed']}", file=sys.stderr)
+        print(f"  Skipped: {stats['skipped']}", file=sys.stderr)
+        print(f"  Errors:  {stats['errors']}", file=sys.stderr)
 
         # Show index size
         if index_path.exists():
             size_mb = index_path.stat().st_size / (1024 * 1024)
-            print(f"  Index size: {size_mb:.1f} MB")
+            print(f"  Index size: {size_mb:.1f} MB", file=sys.stderr)
 
         return 0
 

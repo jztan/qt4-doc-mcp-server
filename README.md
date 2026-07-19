@@ -90,7 +90,17 @@ The selected root determines accepted and emitted URLs: Qt 4.8 uses `https://doc
 
 ## 🔌 MCP Client Setup
 
-The server exposes an HTTP endpoint at `http://127.0.0.1:8000/mcp`. Register it with your preferred MCP-compatible agent using the instructions below.
+By default, the server exposes an HTTP endpoint at `http://127.0.0.1:8000/mcp`. Register it with your preferred MCP-compatible agent using the instructions below.
+
+### Stdio transport
+
+Run the server over stdio instead of HTTP with:
+
+```bash
+qt4-doc-mcp-server --transport stdio
+```
+
+For stdio-only MCP clients, configure that command with `args: ["--transport", "stdio"]`. Startup indexing and Markdown-cache progress are written to stderr, leaving stdout exclusively for MCP protocol messages.
 
 <details>
 <summary><strong>Visual Studio Code (Native MCP Support)</strong></summary>

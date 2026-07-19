@@ -1,10 +1,11 @@
 """MCP entry point for the active local Qt Documentation MCP Server.
 
-Implements MCP using the FastMCP server with streamable HTTP transport
-(stateless). Exposes a /health route via FastMCP custom routing.
+Implements MCP using FastMCP with streamable HTTP (the default) or stdio
+transport. The HTTP variant exposes a /health route via FastMCP custom routing.
 """
 from __future__ import annotations
 
+import argparse
 import logging
 import os
 
@@ -40,8 +41,21 @@ async def health(request):  # noqa: ARG001 (unused)
 app = mcp.streamable_http_app()
 
 
-def run() -> None:
-    """Console entry: launch FastMCP with streamable HTTP transport."""
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run the local Qt documentation MCP server")
+    parser.add_argument(
+        "--transport",
+        choices=("streamable-http", "stdio"),
+        default="streamable-http",
+        help="MCP transport to use (default: streamable-http)",
+    )
+    return parser.parse_args(argv)
+
+
+def run(argv: list[str] | None = None) -> None:
+    """Console entry: launch FastMCP over streamable HTTP or stdio."""
+    args = _parse_args(argv)
+
     # Load .env from repo root if present
     load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
@@ -95,18 +109,20 @@ def run() -> None:
         except Exception as e:
             logger.warning("Index build failed: %s", e)
 
-    # Configure FastMCP settings
-    mcp.settings.host = settings.server_host
-    mcp.settings.port = settings.server_port
-    mcp.settings.stateless_http = True
-
     level = settings.mcp_log_level.upper()
     logging.basicConfig(level=getattr(logging, level, logging.WARNING))
-    logger.info(
-        "Starting MCP server (streamable-http) on %s:%s",
-        mcp.settings.host,
-        mcp.settings.port,
-    )
+
+    if args.transport == "streamable-http":
+        mcp.settings.host = settings.server_host
+        mcp.settings.port = settings.server_port
+        mcp.settings.stateless_http = True
+        logger.info(
+            "Starting MCP server (streamable-http) on %s:%s",
+            mcp.settings.host,
+            mcp.settings.port,
+        )
+    else:
+        logger.info("Starting MCP server over stdio")
 
     try:
         registered = list(getattr(mcp._tool_manager, "_tools", {}).keys())
@@ -114,7 +130,7 @@ def run() -> None:
     except Exception as exc:  # pragma: no cover
         logger.debug("Unable to introspect tool registry: %s", exc)
 
-    mcp.run(transport="streamable-http")
+    mcp.run(transport=args.transport)
 
 
 if __name__ == "__main__":
