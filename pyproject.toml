@@ -1,5 +1,5 @@
 [project]
-name = "qt-doc-mcp-server"
+name = "qt4-doc-mcp-server"
 version = "0.5.0"
 description = "Offline MCP Server for local Qt 4.8, Qt 5, and Qt 6 documentation"
 requires-python = ">=3.11"
@@ -40,6 +40,7 @@ Changelog = "https://github.com/jztan/qt4-doc-mcp-server/blob/master/CHANGELOG.m
 
 [project.scripts]
 qt-doc-mcp = "qt4_doc_mcp_server.main:run"
+qt4-doc-mcp-server = "qt4_doc_mcp_server.main:run"
 qt-doc-cli = "qt4_doc_mcp_server.search_cli:search_cli_main"
 qt-doc-build-index = "qt4_doc_mcp_server.cli:build_index_main"
 qt-doc-warm-md = "qt4_doc_mcp_server.cli:warm_md_main"

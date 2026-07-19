@@ -37,7 +37,7 @@ pip install qt4-doc-mcp-server
 ```bash
 git clone https://github.com/jztan/qt4-doc-mcp-server.git
 cd qt4-doc-mcp-server
-pip install -e .[dev]
+uv sync --locked
 ```
 
 ### Setup Qt Documentation
@@ -64,11 +64,13 @@ python scripts/prepare_qt48_docs.py --segments 4
 qt-doc-build-index
 
 # 4. Start server
-qt-doc-mcp-server
+qt-doc-mcp
 
 # 5. Verify health
 curl -s http://127.0.0.1:8000/health
 ```
+
+The legacy `qt4-doc-mcp-server` command remains available as an alias for existing client configurations.
 
 ### Agent-friendly FTS CLI
 
@@ -86,6 +88,7 @@ Create a `.env` file in the repo root. The helper script writes sensible default
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `QT_DOC_BASE` | _required_ | Absolute path to one Qt 4.8, Qt 5, or Qt 6 HTML documentation root. The server detects the active docset. |
+| `QT_DOC_STATE_DIR` | `$QT_DOC_BASE/.index` | Optional writable directory for the FTS index and Markdown cache. Use this when the documentation root is read-only. |
 | `PREINDEX_DOCS` | `true` | Build search index automatically at startup if not present. |
 | `PRECONVERT_MD` | `false` | Warm the Markdown cache automatically at MCP startup. |
 | `SERVER_HOST` | `127.0.0.1` | Bind address for the FastMCP server (`0.0.0.0` for containers). |
@@ -94,7 +97,7 @@ Create a `.env` file in the repo root. The helper script writes sensible default
 | `MD_CACHE_SIZE` | `512` | In-memory CachedDoc LRU capacity (counts pages). |
 | `DEFAULT_MAX_MARKDOWN_LENGTH` | `20000` | Default maximum characters returned per request (prevents token limit issues). |
 
-The tools identify documents by their exact root-relative Markdown path, not an online URL. For example, use `qcompleter.md` for a Qt 4 page, `qtdoc/accessible.md` for a Qt 5/6 global page, or `qtcore/qobject.md` for a Qt 5/6 Core page. Each docset stores its own index and Markdown cache under `$QT_DOC_BASE/.index/`, so switching `QT_DOC_BASE` reuses its existing derived state. The Markdown cache mirrors the documentation tree: for example, `qtcore/qobject.md` is cached as `.index/md/qtcore/qobject.md` plus `qobject.meta.json`.
+The tools identify documents by their exact root-relative Markdown path, not an online URL. For example, use `qcompleter.md` for a Qt 4 page, `qtdoc/accessible.md` for a Qt 5/6 global page, or `qtcore/qobject.md` for a Qt 5/6 Core page. By default, each docset stores its own index and Markdown cache under `$QT_DOC_BASE/.index/`, so switching `QT_DOC_BASE` reuses its existing derived state. Set `QT_DOC_STATE_DIR` to relocate both to a writable directory. The Markdown cache mirrors the documentation tree: for example, `qtcore/qobject.md` is cached as `.index/md/qtcore/qobject.md` plus `qobject.meta.json` with the default state directory.
 
 ## 🔌 MCP Client Setup
 
@@ -105,7 +108,7 @@ By default, the server exposes an HTTP endpoint at `http://127.0.0.1:8000/mcp`. 
 Run the server over stdio instead of HTTP with:
 
 ```bash
-qt-doc-mcp-server --transport stdio
+qt-doc-mcp --transport stdio
 ```
 
 For stdio-only MCP clients, configure that command with `args: ["--transport", "stdio"]`. Startup indexing and Markdown-cache progress are written to stderr, leaving stdout exclusively for MCP protocol messages.

@@ -1,6 +1,13 @@
 from pathlib import Path
 
-from qt4_doc_mcp_server.config import Settings, ensure_dirs, index_db_path, markdown_cache_dir
+from qt4_doc_mcp_server.config import (
+    Settings,
+    ensure_dirs,
+    index_db_path,
+    load_settings,
+    markdown_cache_dir,
+    validate_settings,
+)
 from qt4_doc_mcp_server.doc_service import get_markdown_for_path
 from qt4_doc_mcp_server.search import build_index, index_is_current, search
 
@@ -101,3 +108,35 @@ def test_each_docset_has_its_own_derived_state(tmp_path: Path) -> None:
     assert stale_file.exists()
     assert markdown_cache_dir(second) != markdown_cache_dir(first)
     assert second.docset is not None and second.docset.key == "qt6.8"
+
+
+def test_state_dir_can_be_relocated_for_read_only_docs(tmp_path: Path) -> None:
+    docs = _qt6_docs(tmp_path)
+    state_dir = tmp_path / "writable-state"
+    settings = Settings(qt_doc_base=docs, qt_doc_state_dir=state_dir)
+
+    ensure_dirs(settings)
+
+    assert index_db_path(settings) == state_dir / "fts.sqlite"
+    assert markdown_cache_dir(settings) == state_dir / "md"
+    assert markdown_cache_dir(settings).is_dir()
+
+
+def test_load_settings_warns_about_removed_state_variables(
+    tmp_path: Path, monkeypatch
+) -> None:
+    docs = _qt6_docs(tmp_path)
+    state_dir = tmp_path / "state"
+    monkeypatch.setenv("QT_DOC_BASE", str(docs))
+    monkeypatch.setenv("QT_DOC_STATE_DIR", str(state_dir))
+    monkeypatch.setenv("INDEX_DB_PATH", str(tmp_path / "old.sqlite"))
+    monkeypatch.setenv("MD_CACHE_DIR", str(tmp_path / "old-cache"))
+
+    settings = load_settings()
+    ok, warnings = validate_settings(settings)
+
+    assert ok
+    assert settings.qt_doc_state_dir == state_dir
+    assert index_db_path(settings) == state_dir / "fts.sqlite"
+    assert any("INDEX_DB_PATH" in warning and "ignored" in warning for warning in warnings)
+    assert any("MD_CACHE_DIR" in warning and "ignored" in warning for warning in warnings)

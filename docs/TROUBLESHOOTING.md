@@ -198,7 +198,7 @@ python --version
 pip check
 
 # 4. Try running with verbose logging
-MCP_LOG_LEVEL=DEBUG qt-doc-mcp-server
+MCP_LOG_LEVEL=DEBUG qt-doc-mcp
 ```
 
 ### Health check fails
@@ -210,10 +210,10 @@ MCP_LOG_LEVEL=DEBUG qt-doc-mcp-server
 **Solution:**
 ```bash
 # 1. Check if server is running
-ps aux | grep qt-doc-mcp-server
+ps aux | grep qt-doc-mcp
 
 # 2. Check server logs
-MCP_LOG_LEVEL=INFO qt-doc-mcp-server
+MCP_LOG_LEVEL=INFO qt-doc-mcp
 
 # 3. Verify port in .env matches your curl request
 grep SERVER_PORT .env
@@ -297,8 +297,8 @@ echo "MD_CACHE_SIZE=128" >> .env
 # Default is 512, reduce to 128 or 256
 
 # Restart server
-pkill -f qt-doc-mcp-server
-qt-doc-mcp-server
+pkill -f qt-doc-mcp
+qt-doc-mcp
 ```
 
 ### Slow first response
@@ -327,11 +327,11 @@ If you're still experiencing issues after trying these solutions:
 1. **Check existing issues:** Search [GitHub Issues](https://github.com/jztan/qt4-doc-mcp-server/issues)
 2. **Enable debug logging:**
    ```bash
-   MCP_LOG_LEVEL=DEBUG qt-doc-mcp-server 2>&1 | tee server.log
+   MCP_LOG_LEVEL=DEBUG qt-doc-mcp 2>&1 | tee server.log
    ```
 3. **Gather information:**
    - Python version: `python --version`
-   - Package version: `pip show qt-doc-mcp-server`
+   - Package version: `pip show qt4-doc-mcp-server`
    - OS and version: `uname -a` (Linux/Mac) or `ver` (Windows)
    - Error messages and stack traces
 

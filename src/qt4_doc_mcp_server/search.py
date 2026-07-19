@@ -5,6 +5,7 @@ local Qt HTML documentation set and provides fast ranked search with context sni
 """
 from __future__ import annotations
 
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 import sqlite3
@@ -188,8 +189,7 @@ def build_index(
             cur.execute(FTS5_SCHEMA)
             cur.execute(META_SCHEMA)
 
-            # Store the format version. The database resides inside QT_DOC_BASE,
-            # so no external documentation-root provenance is required.
+            # Store the schema and document-path format version.
             cur.execute(
                 "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
                 ("index_format_version", INDEX_FORMAT_VERSION)
@@ -261,14 +261,10 @@ def index_is_current(db_path: Path) -> bool:
     if not db_path.exists():
         return False
     try:
-        with sqlite3.connect(str(db_path)) as con:
+        # sqlite3.Connection's context manager does not close the connection.
+        with closing(sqlite3.connect(str(db_path))) as con:
             rows = dict(con.execute("SELECT key, value FROM meta"))
-        # Accept the immediately preceding Markdown-path metadata format; its
-        # schema and stored paths are identical to the current format.
-        return (
-            rows.get("index_format_version") == INDEX_FORMAT_VERSION
-            or rows.get("document_path_format_version") == "2"
-        )
+        return rows.get("index_format_version") == INDEX_FORMAT_VERSION
     except (sqlite3.Error, OSError):
         return False
 

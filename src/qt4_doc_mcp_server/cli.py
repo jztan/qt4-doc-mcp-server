@@ -45,12 +45,14 @@ def warm_md_main(argv: list[str] | None = None) -> int:
         print("Markdown cache is already complete; use --force to rebuild.", file=sys.stderr)
         return 0
 
+    if args.force:
+        # A partial forced warmup must never retain a stale completeness claim.
+        complete_marker.unlink(missing_ok=True)
+
     files = list(_iter_html_files(root))
     limited = args.limit and args.limit > 0
     if limited:
         files = files[: args.limit]
-    elif args.force:
-        complete_marker.unlink(missing_ok=True)
     total = len(files)
     if total == 0:
         print("No HTML files found under QT_DOC_BASE", file=sys.stderr)

@@ -1,5 +1,6 @@
 """Tests for search.py FTS5 indexing and querying."""
 from pathlib import Path
+import sqlite3
 
 import pytest
 
@@ -14,6 +15,7 @@ from qt4_doc_mcp_server.search import (
     search,
     SearchResult,
     SearchUnavailable,
+    index_is_current,
 )
 from qt4_doc_mcp_server.tools import configure_from_settings, search_documentation
 from qt4_doc_mcp_server.search_cli import search_cli_main
@@ -315,6 +317,31 @@ def test_search_cli_prepares_index_and_markdown_cache(
     assert markdown_cache_complete_path(sample_settings).exists()
     assert markdown_path.exists()
     assert (sample_settings.qt_doc_base / ".index" / "md" / "qwidget.md").exists()
+
+
+def test_search_cli_rebuilds_an_outdated_index(
+    sample_settings: Settings, monkeypatch, capsys
+) -> None:
+    assert sample_settings.qt_doc_base is not None
+    monkeypatch.setenv("QT_DOC_BASE", str(sample_settings.qt_doc_base))
+    monkeypatch.setenv("PREINDEX_DOCS", "false")
+    monkeypatch.setenv("PRECONVERT_MD", "false")
+    build_index(sample_settings.index_db_path, sample_settings.qt_doc_base)
+    con = sqlite3.connect(sample_settings.index_db_path)
+    try:
+        con.execute("DELETE FROM meta WHERE key = 'index_format_version'")
+        con.execute(
+            "INSERT INTO meta (key, value) VALUES (?, ?)",
+            ("document_path_format_version", "2"),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+    assert not index_is_current(sample_settings.index_db_path)
+    assert search_cli_main(["QString"]) == 0
+    assert "Search index is outdated; rebuilding it now" in capsys.readouterr().err
+    assert index_is_current(sample_settings.index_db_path)
 
 
 def test_build_index_deterministic(sample_settings: Settings) -> None:

@@ -754,7 +754,7 @@ wheels = [
 ]
 
 [[package]]
-name = "qt-doc-mcp-server"
+name = "qt4-doc-mcp-server"
 version = "0.5.0"
 source = { editable = "." }
 dependencies = [
@@ -776,12 +776,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "beautifulsoup4", specifier = ">=4.14.0" },
-    { name = "lxml", specifier = ">=6.0.0" },
-    { name = "markdownify", specifier = ">=1.2.0" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.19.0" },
-    { name = "python-dotenv", specifier = ">=1.1.1" },
-    { name = "uvicorn", specifier = ">=0.38.0" },
+    { name = "beautifulsoup4", specifier = ">=4.15.0" },
+    { name = "lxml", specifier = ">=6.1.1" },
+    { name = "markdownify", specifier = ">=1.2.3" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.28.1,<2" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "uvicorn", specifier = ">=0.51.0" },
 ]
 
 [package.metadata.requires-dev]

@@ -22,6 +22,7 @@ class Settings:
     server_host: str = "127.0.0.1"
     server_port: int = 8000
     qt_doc_base: Path | None = None
+    qt_doc_state_dir: Path | None = None
     preindex_docs: bool = True
     preconvert_md: bool = False
     md_cache_size: int = 512
@@ -31,7 +32,7 @@ class Settings:
 
     @property
     def index_db_path(self) -> Path:
-        """Derived FTS path; it is intentionally not user-configurable."""
+        """Return the FTS path within the shared derived-state directory."""
         return index_db_path(self)
 
 
@@ -55,6 +56,8 @@ def load_settings() -> Settings:
     s.server_port = int(os.getenv("SERVER_PORT", s.server_port))
     qdb = os.getenv("QT_DOC_BASE")
     s.qt_doc_base = Path(qdb) if qdb else None
+    state_dir = os.getenv("QT_DOC_STATE_DIR")
+    s.qt_doc_state_dir = Path(state_dir) if state_dir else None
     s.docset = detect_docset(s.qt_doc_base)
     s.preindex_docs = os.getenv("PREINDEX_DOCS", str(s.preindex_docs)).lower() == "true"
     s.preconvert_md = os.getenv("PRECONVERT_MD", str(s.preconvert_md)).lower() == "true"
@@ -72,7 +75,9 @@ def active_docset(settings: Settings) -> DocSet:
 
 
 def mcp_state_dir(settings: Settings) -> Path:
-    """Return the derived-state directory for the active local documentation set."""
+    """Return the configured or co-located derived-state directory."""
+    if settings.qt_doc_state_dir is not None:
+        return settings.qt_doc_state_dir
     if settings.qt_doc_base is None:
         raise ValueError("QT_DOC_BASE must be configured before using derived state")
     return settings.qt_doc_base / ".index"
@@ -104,7 +109,7 @@ def clear_markdown_cache(settings: Settings) -> None:
 
 
 def ensure_dirs(settings: Settings) -> None:
-    """Ensure the active documentation set's derived-state directories exist."""
+    """Ensure the configured derived-state directories exist."""
     active_docset(settings)
     try:
         mcp_state_dir(settings).mkdir(parents=True, exist_ok=True)
@@ -118,6 +123,12 @@ def validate_settings(settings: Settings) -> Tuple[bool, list]:
     """Validate critical settings. Returns (ok, warnings)."""
     warnings: list = []
     ok = True
+    for legacy_name in ("INDEX_DB_PATH", "MD_CACHE_DIR"):
+        if os.getenv(legacy_name) is not None:
+            warnings.append(
+                f"{legacy_name} is no longer supported and is ignored; "
+                "use QT_DOC_STATE_DIR to relocate all derived state"
+            )
     if settings.qt_doc_base is None:
         logging.error("QT_DOC_BASE is not set. Please configure it in .env or env vars.")
         return False, warnings

@@ -44,7 +44,10 @@ def search_cli_main(argv: list[str] | None = None) -> int:
     if not index_is_current(db_path):
         from .cli import build_index_main
 
-        print("Search index is missing; building it now...", file=sys.stderr)
+        if db_path.exists():
+            print("Search index is outdated; rebuilding it now...", file=sys.stderr)
+        else:
+            print("Search index is missing; building it now...", file=sys.stderr)
         if build_index_main([]) != 0:
             return 1
 

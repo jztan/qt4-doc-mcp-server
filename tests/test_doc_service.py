@@ -247,3 +247,23 @@ def test_warm_md_skips_a_completed_cache(tmp_path: Path, monkeypatch, capsys) ->
     assert warm_md_main([]) == 0
     assert "already complete" in capsys.readouterr().err
 
+
+def test_forced_limited_warmup_clears_complete_marker(
+    tmp_path: Path, monkeypatch
+) -> None:
+    for name in ("qfirst.html", "qsecond.html"):
+        (tmp_path / name).write_text(
+            f"<html><body><div class='mainContent'><h1>{name}</h1></div></body></html>",
+            encoding="utf-8",
+        )
+    monkeypatch.setenv("QT_DOC_BASE", str(tmp_path))
+    monkeypatch.setenv("PREINDEX_DOCS", "false")
+    monkeypatch.setenv("PRECONVERT_MD", "false")
+
+    settings = Settings(qt_doc_base=tmp_path)
+    ensure_dirs(settings)
+    markdown_cache_complete_path(settings).touch()
+
+    assert warm_md_main(["--force", "--limit", "1"]) == 0
+    assert not markdown_cache_complete_path(settings).exists()
+

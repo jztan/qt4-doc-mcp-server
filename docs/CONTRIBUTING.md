@@ -50,7 +50,7 @@ We welcome contributions in several forms:
 
 3. **Install Dependencies**
    ```bash
-   uv pip install -e .[dev]
+   uv sync --locked
    ```
 
 4. **Setup Qt Documentation**
