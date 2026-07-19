@@ -20,6 +20,7 @@ else:
 
 from .docsets import DocSet, QT4_DOCSET
 from .errors import DocumentationError
+from .fetcher import html_to_markdown_path
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ META_SCHEMA = (
 )
 
 # Bump when search result path semantics change.
-DOCUMENT_PATH_FORMAT_VERSION = "1"
+DOCUMENT_PATH_FORMAT_VERSION = "2"
 
 
 @dataclass
@@ -225,14 +226,14 @@ def build_index(
                         stats["skipped"] += 1
                         continue
 
-                    # Compute the exact root-relative local document path.
+                    # Index the public Markdown path corresponding to the
+                    # root-relative source HTML path.
                     path_rel = html_path.relative_to(docs_base).as_posix()
-                    # Insert the exact root-relative local path.  Offline Qt 5/6
-                    # bundles are module-nested even though their web URLs are flat.
+                    document_path = html_to_markdown_path(path_rel)
                     cur.execute(
                         "INSERT INTO docs (title, headings, body, path) "
                         "VALUES (?, ?, ?, ?)",
-                        (title, headings, body, path_rel)
+                        (title, headings, body, document_path)
                     )
 
                     stats["indexed"] += 1

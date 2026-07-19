@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .config import active_docset, ensure_dirs, index_db_path, load_settings, validate_settings
 from .doc_service import get_markdown_for_path
+from .fetcher import html_to_markdown_path
 from .search import build_index, index_matches_docs
 
 
@@ -46,7 +47,7 @@ def warm_md_main(argv: list[str] | None = None) -> int:
     for i, f in enumerate(files, 1):
         rel = f.relative_to(root).as_posix()
         try:
-            doc = get_markdown_for_path(rel, settings, None)
+            doc = get_markdown_for_path(html_to_markdown_path(rel), settings, None)
             total_md += len(doc.markdown)
         except Exception as e:
             print(f"\nError converting {rel}: {e}", file=sys.stderr)

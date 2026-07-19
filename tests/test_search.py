@@ -164,7 +164,7 @@ def test_search_multiple_terms(sample_settings: Settings) -> None:
     results = search(db_path, "signals slots")
 
     assert len(results) > 0, "Should find results for multi-term query"
-    # The signals-slots.html should rank highly
+    # The signals-slots.md document should rank highly
     titles = [r.title for r in results]
     assert "Signals and Slots" in titles
 
@@ -209,7 +209,7 @@ def test_search_result_structure(sample_settings: Settings) -> None:
     assert isinstance(result.path, str)
     assert isinstance(result.score, float)
     assert isinstance(result.context, str)
-    assert result.path == "qstring.html"
+    assert result.path == "qstring.md"
 
 
 @pytest.mark.asyncio

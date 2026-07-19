@@ -40,7 +40,7 @@ def sample_settings(tmp_path: Path) -> Settings:
 
 
 def _document_path() -> str:
-    return "qsample.html"
+    return "qsample.md"
 
 
 def test_metadata_persists_through_cache(sample_settings: Settings) -> None:
@@ -50,7 +50,7 @@ def test_metadata_persists_through_cache(sample_settings: Settings) -> None:
     doc = get_markdown_for_path(path, sample_settings, lru)
     assert doc.title == "Sample Title"
     assert doc.links
-    assert doc.links[0]["path"] == "qtother.html#anchor"
+    assert doc.links[0]["path"] == "qtother.md#anchor"
 
     meta_path = md_store_meta_path(markdown_cache_dir(sample_settings), path)
     md_path = md_store_path(markdown_cache_dir(sample_settings), path)
@@ -87,11 +87,11 @@ def test_section_only_not_cached(sample_settings: Settings) -> None:
 def test_read_documentation_invalid_path_raises(sample_settings: Settings) -> None:
     configure_from_settings(sample_settings)
     with pytest.raises(ToolError) as exc_info:
-        asyncio.run(read_documentation("../other.html"))
+        asyncio.run(read_documentation("../other.md"))
     assert str(exc_info.value).startswith("NotAllowed")
 
     with pytest.raises(ToolError) as exc_info:
-        asyncio.run(read_documentation("https://doc.qt.io/qt-6/qobject.html"))
+        asyncio.run(read_documentation("https://doc.qt.io/qt-6/qobject.md"))
     assert str(exc_info.value).startswith("InvalidPath")
 
 
@@ -99,7 +99,7 @@ def test_read_documentation_missing_file(sample_settings: Settings) -> None:
     configure_from_settings(sample_settings)
     with pytest.raises(ToolError) as exc_info:
         asyncio.run(
-            read_documentation("missing.html")
+            read_documentation("missing.md")
         )
     assert str(exc_info.value).startswith("NotFound")
 
@@ -143,7 +143,7 @@ def test_read_documentation_applies_default_max_length(tmp_path: Path) -> None:
     ensure_dirs(settings)
     configure_from_settings(settings)
     
-    result = asyncio.run(read_documentation("qlong.html"))
+    result = asyncio.run(read_documentation("qlong.md"))
     
     # Should be truncated to 500 characters
     assert len(result["markdown"]) == 500
@@ -180,7 +180,7 @@ def test_read_documentation_explicit_max_length_overrides_default(tmp_path: Path
     configure_from_settings(settings)
     
     # Explicitly request 300 characters
-    result = asyncio.run(read_documentation("qlong2.html", max_length=300))
+    result = asyncio.run(read_documentation("qlong2.md", max_length=300))
     
     # Should use explicit value, not default
     assert len(result["markdown"]) == 300
@@ -216,12 +216,12 @@ def test_read_documentation_pagination_with_start_index(tmp_path: Path) -> None:
     configure_from_settings(settings)
     
     # Get first page
-    page1 = asyncio.run(read_documentation("qpage.html", start_index=0, max_length=50))
+    page1 = asyncio.run(read_documentation("qpage.md", start_index=0, max_length=50))
     assert len(page1["markdown"]) == 50
     assert page1["content_info"]["start_index"] == 0
     
     # Get second page
-    page2 = asyncio.run(read_documentation("qpage.html", start_index=50, max_length=50))
+    page2 = asyncio.run(read_documentation("qpage.md", start_index=50, max_length=50))
     assert len(page2["markdown"]) == 50
     assert page2["content_info"]["start_index"] == 50
     

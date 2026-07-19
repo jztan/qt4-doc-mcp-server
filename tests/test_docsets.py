@@ -43,10 +43,10 @@ def test_qt6_docset_detection_reading_and_search(tmp_path: Path) -> None:
     assert settings.docset.key == "qt6.8"
     assert index_db_path(settings) == docs / ".index" / "fts.sqlite"
     assert markdown_cache_dir(settings) == docs / ".index" / "md"
-    document_path = "qtcore/qsample.html"
+    document_path = "qtcore/qsample.md"
     doc = get_markdown_for_path(document_path, settings)
     assert "Retained Qt 6 content" in doc.markdown
-    assert doc.links[0]["path"] == "qtcore/qother.html#member"
+    assert doc.links[0]["path"] == "qtcore/qother.md#member"
 
     stats = build_index(index_db_path(settings), docs, docset=settings.docset)
     assert stats == {"indexed": 1, "skipped": 0, "errors": 0}
@@ -77,7 +77,7 @@ def test_qt5_qtdoc_pages_retain_local_paths(tmp_path: Path) -> None:
     ensure_dirs(settings)
     assert settings.docset is not None
 
-    document_path = "qtdoc/accessible.html"
+    document_path = "qtdoc/accessible.md"
     assert "Accessible application content" in get_markdown_for_path(document_path, settings).markdown
 
     build_index(index_db_path(settings), docs, docset=settings.docset)

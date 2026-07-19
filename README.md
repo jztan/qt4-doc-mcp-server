@@ -84,7 +84,7 @@ Create a `.env` file in the repo root. The helper script writes sensible default
 | `MD_CACHE_SIZE` | `512` | In-memory CachedDoc LRU capacity (counts pages). |
 | `DEFAULT_MAX_MARKDOWN_LENGTH` | `20000` | Default maximum characters returned per request (prevents token limit issues). |
 
-The tools identify documents by their exact root-relative local path, not an online URL. For example, use `qcompleter.html` for a Qt 4 page, `qtdoc/accessible.html` for a Qt 5/6 global page, or `qtcore/qobject.html` for a Qt 5/6 Core page. Each docset stores its own index and Markdown cache under `$QT_DOC_BASE/.index/`, so switching `QT_DOC_BASE` reuses its existing derived state. The Markdown cache mirrors the documentation tree: for example, `qtcore/qobject.html` is cached as `.index/md/qtcore/qobject.md` plus `qobject.meta.json`.
+The tools identify documents by their exact root-relative Markdown path, not an online URL. For example, use `qcompleter.md` for a Qt 4 page, `qtdoc/accessible.md` for a Qt 5/6 global page, or `qtcore/qobject.md` for a Qt 5/6 Core page. Each docset stores its own index and Markdown cache under `$QT_DOC_BASE/.index/`, so switching `QT_DOC_BASE` reuses its existing derived state. The Markdown cache mirrors the documentation tree: for example, `qtcore/qobject.md` is cached as `.index/md/qtcore/qobject.md` plus `qobject.meta.json`.
 
 ## 🔌 MCP Client Setup
 

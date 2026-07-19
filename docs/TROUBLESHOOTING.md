@@ -150,7 +150,7 @@ uv run python -c "
 from qt4_doc_mcp_server.config import load_settings
 from qt4_doc_mcp_server.doc_service import get_markdown_for_path
 settings = load_settings()
-doc = get_markdown_for_path('qstring.html', settings)
+doc = get_markdown_for_path('qstring.md', settings)
 print(doc.markdown[:500])
 "
 ```

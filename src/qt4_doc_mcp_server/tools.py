@@ -91,7 +91,7 @@ async def read_documentation(
     """Fetch a page from the active local Qt documentation set and return Markdown.
     
     Args:
-        path: Root-relative path to a file under QT_DOC_BASE (for example, 'qtcore/qobject.html')
+        path: Root-relative Markdown path (for example, 'qtcore/qobject.md')
         fragment: Optional HTML fragment (e.g., '#details')
         section_only: If True with fragment, return only that section
         start_index: Character offset to start from (for pagination)

@@ -61,7 +61,7 @@ Read and convert specific Qt documentation pages to Markdown format.
   "params": {
     "name": "read_documentation",
     "arguments": {
-      "path": "qstring.html",
+      "path": "qstring.md",
       "fragment": "#details",
       "section_only": true,
       "max_length": 2000
@@ -76,16 +76,16 @@ Read and convert specific Qt documentation pages to Markdown format.
 {
   "result": {
     "title": "QString Class",
-    "path": "qstring.html",
+    "path": "qstring.md",
     "markdown": "# QString Class\n\n## Detailed Description\n\nThe QString class provides...",
     "links": [
       {
         "text": "QStringList",
-        "path": "qstringlist.html"
+        "path": "qstringlist.md"
       },
       {
         "text": "QByteArray",
-        "path": "qbytearray.html"
+        "path": "qbytearray.md"
       }
     ],
     "attribution": "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3",
@@ -114,9 +114,9 @@ Read and convert specific Qt documentation pages to Markdown format.
 - Fragment extraction bypasses cache for fresh content
 
 **Path formats:**
-- Qt 4 example: `qstring.html`
-- Qt 5/6 Core example: `qtcore/qstring.html`
-- Qt 5/6 global page example: `qtdoc/accessible.html`
+- Qt 4 example: `qstring.md`
+- Qt 5/6 Core example: `qtcore/qstring.md`
+- Qt 5/6 global page example: `qtdoc/accessible.md`
 - Pass fragments separately with `fragment: "#details"`
 
 ---
@@ -183,19 +183,19 @@ Full-text search across the active local Qt documentation set using SQLite FTS5.
     "results": [
       {
         "title": "Signals and Slots",
-        "path": "signalsandslots.html",
+        "path": "signalsandslots.md",
         "score": 12.34,
         "context": "…used for communication between objects. <b>Signals</b> and <b>slots</b> mechanism is a central…"
       },
       {
         "title": "QObject Class Reference",
-        "path": "qobject.html",
+        "path": "qobject.md",
         "score": 8.76,
         "context": "…The QObject class supports <b>signals</b> and <b>slots</b> for inter-object communication…"
       },
       {
         "title": "Signals & Slots",
-        "path": "signalsandslots-syntaxes.html",
+        "path": "signalsandslots-syntaxes.md",
         "score": 7.23,
         "context": "…Connecting <b>signals</b> and <b>slots</b> with different syntaxes…"
       }
@@ -253,7 +253,7 @@ All tools return errors in standard MCP format:
 
 | Code | Cause | Solution |
 |------|-------|----------|
-| `InvalidPath` | A URL, fragment, or malformed document path was supplied | Pass a root-relative path such as `qtcore/qobject.html` |
+| `InvalidPath` | A URL, fragment, or malformed document path was supplied | Pass a root-relative Markdown path such as `qtcore/qobject.md` |
 | `NotAllowed` | Path escapes `QT_DOC_BASE` | Use a root-relative document path without `..` |
 | `NotFound` | Documentation file not found | Verify `QT_DOC_BASE` points to correct directory |
 | `SearchUnavailable` | Search index not built/current | Run `qt4-doc-build-index` or set `PREINDEX_DOCS=true` |

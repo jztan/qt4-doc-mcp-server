@@ -6,10 +6,10 @@ falls back to a simple text converter. See DESIGN.md for detailed rules.
 from __future__ import annotations
 
 from typing import TypedDict, List
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 from .errors import DocumentationError
-from .fetcher import canonicalize_path
+from .fetcher import canonicalize_path, html_to_markdown_path
 
 try:
     from bs4 import BeautifulSoup
@@ -80,10 +80,11 @@ def extract_main(html: str):
 
 
 def normalize_links(root, document_path: str) -> List[dict]:
-    """Rewrite local links to root-relative documentation paths and collect them.
+    """Convert local HTML links to relative Markdown links and collect paths.
 
-    Local links are returned as ``{text, path}``; external links retain their
-    original URL as ``{text, url}``.
+    The converted Markdown retains the source link's relative structure for
+    filesystem browsing.  Link metadata contains a root-relative ``path`` for
+    direct use with ``read_documentation``.
     """
     links: List[dict] = []
     if root is None or BeautifulSoup is None:
@@ -94,20 +95,32 @@ def normalize_links(root, document_path: str) -> List[dict]:
         href = a.get("href")
         if not href:
             continue
-        absolute = urljoin(base_url, href)
-        parsed = urlparse(absolute)
-        if parsed.netloc == "local.invalid":
+        parsed_href = urlparse(href)
+        if parsed_href.scheme or parsed_href.netloc:
+            links.append({"text": a.get_text(strip=True), "url": href})
+            continue
+
+        markdown_href = href
+        if parsed_href.path:
             try:
-                link_path = canonicalize_path(parsed.path)
+                markdown_href = urlunparse(
+                    parsed_href._replace(path=html_to_markdown_path(parsed_href.path))
+                )
             except DocumentationError:
                 links.append({"text": a.get_text(strip=True), "url": href})
                 continue
-            if parsed.fragment:
-                link_path += "#" + parsed.fragment
-            a["href"] = link_path
-            links.append({"text": a.get_text(strip=True), "path": link_path})
-        else:
+        a["href"] = markdown_href
+
+        absolute = urljoin(base_url, markdown_href)
+        resolved = urlparse(absolute)
+        try:
+            link_path = canonicalize_path(resolved.path)
+        except DocumentationError:
             links.append({"text": a.get_text(strip=True), "url": href})
+            continue
+        if resolved.fragment:
+            link_path += "#" + resolved.fragment
+        links.append({"text": a.get_text(strip=True), "path": link_path})
     return links
 
 
