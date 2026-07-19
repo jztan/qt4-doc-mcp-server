@@ -27,6 +27,8 @@ jobs:
         run: |
           source .venv/bin/activate
           uv run python -m pytest --verbose
+      - name: Audit dependencies
+        run: bash scripts/audit.sh
 
   publish:
     needs: test-before-publish

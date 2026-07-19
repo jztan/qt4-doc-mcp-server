@@ -1,0 +1,50 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jztan/qt4-doc-mcp-server",
+  "description": "Offline MCP server for Qt 4.8.4 documentation with full-text search.",
+  "repository": {
+    "url": "https://github.com/jztan/qt4-doc-mcp-server",
+    "source": "github"
+  },
+  "version": "0.5.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "qt4-doc-mcp-server",
+      "version": "0.5.0",
+      "transport": {
+        "type": "streamable-http",
+        "url": "http://127.0.0.1:8000/mcp"
+      },
+      "environmentVariables": [
+        {
+          "description": "Absolute path to the Qt 4.8.4 doc/html directory (required)",
+          "format": "string",
+          "isRequired": true,
+          "name": "QT_DOC_BASE"
+        },
+        {
+          "description": "Disk-backed Markdown cache location (default: .cache/md)",
+          "format": "string",
+          "name": "MD_CACHE_DIR"
+        },
+        {
+          "description": "SQLite FTS5 search index location (default: .index/fts.sqlite)",
+          "format": "string",
+          "name": "INDEX_DB_PATH"
+        },
+        {
+          "description": "Server bind address (default: 127.0.0.1)",
+          "format": "string",
+          "name": "SERVER_HOST"
+        },
+        {
+          "description": "Server port (default: 8000)",
+          "format": "number",
+          "name": "SERVER_PORT"
+        }
+      ]
+    }
+  ]
+}

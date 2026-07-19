@@ -15,6 +15,7 @@ build/
 uv.lock
 .env
 qt4-docs-html/
+release_notes_v*.md
 .mcp.json
 .python-version
 docs_internal/

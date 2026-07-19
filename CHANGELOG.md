@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
 ## [Unreleased]
+### Added
+- Release automation script (`scripts/release.py`): gitflow release with preflight checks, version bumping, LLM-drafted release notes with approval loop, PyPI/workflow watching, GitHub release creation, and MCP Registry publish
+- Dependency audit script (`scripts/audit.sh`) using pip-audit, run in CI and release preflight
+- `server.json` manifest for MCP Registry publication
+- Tests for release script helpers (version bumping, changelog stamping, notes persistence)
+
 ### Changed
 - Updated `mcp[cli]` dependency: 1.19.0 → 1.28.1 (capped below 2.0 pre-releases)
 - Updated `uvicorn` dependency: 0.38.0 → 0.51.0
