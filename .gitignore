@@ -15,3 +15,9 @@ build/
 uv.lock
 .env
 qt4-docs-html/
+.mcp.json
+.python-version
+docs_internal/
+
+CLAUDE.md
+settings.local.json
