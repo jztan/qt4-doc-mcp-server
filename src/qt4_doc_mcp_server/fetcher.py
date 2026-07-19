@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
-import os
 import posixpath
 
 from .errors import FetchError, InvalidURLError, NotAllowedError, NotFoundError
@@ -19,7 +18,7 @@ def canonicalize_url(url: str) -> str:
     """
     u = urlparse(url)
     host = (u.netloc or "").lower()
-    if host != CANONICAL_HOST or not (u.scheme in {"http", "https"}):
+    if host != CANONICAL_HOST or u.scheme not in {"http", "https"}:
         raise InvalidURLError("URL host or scheme not allowed")
     if not u.path.startswith(ARCHIVE_PREFIX):
         raise NotAllowedError("URL not under Qt 4.8 archive path")

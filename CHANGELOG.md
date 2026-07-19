@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
 ## [Unreleased]
+### Changed
+- Updated `mcp[cli]` dependency: 1.19.0 → 1.28.1 (capped below 2.0 pre-releases)
+- Updated `uvicorn` dependency: 0.38.0 → 0.51.0
+- Updated `python-dotenv` dependency: 1.1.1 → 1.2.2
+- Updated `beautifulsoup4` dependency: 4.14.0 → 4.15.0
+- Updated `markdownify` dependency: 1.2.0 → 1.2.3
+- Updated `lxml` dependency: 6.0.0 → 6.1.1
+- Updated dev dependencies: pytest 9.x, pytest-asyncio 1.4, ruff 0.15
+
+### Fixed
+- Removed unused imports and a membership-test style issue flagged by ruff 0.15
 
 ## [0.5.0] - 2025-10-26
 ### Added

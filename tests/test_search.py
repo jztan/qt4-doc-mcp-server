@@ -1,5 +1,4 @@
 """Tests for search.py FTS5 indexing and querying."""
-import asyncio
 from pathlib import Path
 
 import pytest
@@ -10,7 +9,6 @@ from qt4_doc_mcp_server.search import (
     search,
     SearchResult,
     SearchUnavailable,
-    IndexError as SearchIndexError,
 )
 from qt4_doc_mcp_server.tools import configure_from_settings, search_documentation
 
