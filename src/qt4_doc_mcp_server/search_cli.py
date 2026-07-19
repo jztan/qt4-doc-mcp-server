@@ -6,8 +6,14 @@ import re
 import sys
 
 from .cache import md_store_path
-from .config import ensure_dirs, index_db_path, load_settings, markdown_cache_dir, validate_settings
-from .doc_service import get_markdown_for_path
+from .config import (
+    ensure_dirs,
+    index_db_path,
+    load_settings,
+    markdown_cache_complete_path,
+    markdown_cache_dir,
+    validate_settings,
+)
 from .search import IndexError, SearchUnavailable, index_is_current, search
 
 
@@ -36,12 +42,18 @@ def search_cli_main(argv: list[str] | None = None) -> int:
     ensure_dirs(settings)
     db_path = index_db_path(settings)
     if not index_is_current(db_path):
-        print(
-            "Search index is missing or has an outdated format. "
-            "Run 'qt-doc-build-index'.",
-            file=sys.stderr,
-        )
-        return 2
+        from .cli import build_index_main
+
+        print("Search index is missing; building it now...", file=sys.stderr)
+        if build_index_main([]) != 0:
+            return 1
+
+    if not markdown_cache_complete_path(settings).exists():
+        from .cli import warm_md_main
+
+        print("Markdown cache is incomplete; warming it now...", file=sys.stderr)
+        if warm_md_main([]) != 0:
+            return 1
 
     limit = min(50, max(1, args.limit))
     query = " ".join(args.query)
@@ -53,14 +65,13 @@ def search_cli_main(argv: list[str] | None = None) -> int:
 
     cache_dir = markdown_cache_dir(settings)
     for number, result in enumerate(results, 1):
-        try:
-            # Materialize the result so the reported file can be read directly.
-            get_markdown_for_path(result.path, settings)
-        except Exception as exc:
-            print(f"Warning: could not materialize {result.path}: {exc}", file=sys.stderr)
-            continue
-
         markdown_path = md_store_path(cache_dir, result.path).resolve()
+        if not markdown_path.exists():
+            print(
+                f"Markdown cache is incomplete: expected {markdown_path}",
+                file=sys.stderr,
+            )
+            return 1
         print(f"{number}. {result.title}")
         print(f"   {markdown_path}")
         print(f"   {_plain_snippet(result.context)}")
