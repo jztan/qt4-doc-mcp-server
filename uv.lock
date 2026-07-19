@@ -754,7 +754,7 @@ wheels = [
 ]
 
 [[package]]
-name = "qt4-doc-mcp-server"
+name = "qt-doc-mcp-server"
 version = "0.5.0"
 source = { editable = "." }
 dependencies = [

@@ -224,7 +224,7 @@ Full-text search across the active local Qt documentation set using SQLite FTS5.
 - Use `…` (ellipsis) to indicate truncation
 
 **Index Building:**
-- Build index with: `qt4-doc-build-index`
+- Build index with: `qt-doc-build-index`
 - Or set `PREINDEX_DOCS=true` in `.env` for automatic build
 - Index typically 20-50MB, contains ~2000-3000 pages
 - Rebuild with `--force` flag if docs are updated
@@ -256,7 +256,7 @@ All tools return errors in standard MCP format:
 | `InvalidPath` | A URL, fragment, or malformed document path was supplied | Pass a root-relative Markdown path such as `qtcore/qobject.md` |
 | `NotAllowed` | Path escapes `QT_DOC_BASE` | Use a root-relative document path without `..` |
 | `NotFound` | Documentation file not found | Verify `QT_DOC_BASE` points to correct directory |
-| `SearchUnavailable` | Search index not built/current | Run `qt4-doc-build-index` or set `PREINDEX_DOCS=true` |
+| `SearchUnavailable` | Search index not built/current | Run `qt-doc-build-index` or set `PREINDEX_DOCS=true` |
 | `ParseError` | HTML parsing failed | Check if HTML file is corrupted |
 | `Timeout` | Operation took too long | Retry or contact support |
 
@@ -266,7 +266,7 @@ All tools return errors in standard MCP format:
 {
   "error": {
     "code": "SearchUnavailable",
-    "message": "Search index not found under $QT_DOC_BASE/.index/. Run 'qt4-doc-build-index' to build the index."
+    "message": "Search index not found under $QT_DOC_BASE/.index/. Run 'qt-doc-build-index' to build the index."
   }
 }
 ```

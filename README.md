@@ -61,10 +61,10 @@ pip install qt4-doc-mcp-server
 python scripts/prepare_qt48_docs.py --segments 4
 
 # 3. Build search index
-qt4-doc-build-index
+qt-doc-build-index
 
 # 4. Start server
-qt4-doc-mcp-server
+qt-doc-mcp-server
 
 # 5. Verify health
 curl -s http://127.0.0.1:8000/health
@@ -95,7 +95,7 @@ By default, the server exposes an HTTP endpoint at `http://127.0.0.1:8000/mcp`. 
 Run the server over stdio instead of HTTP with:
 
 ```bash
-qt4-doc-mcp-server --transport stdio
+qt-doc-mcp-server --transport stdio
 ```
 
 For stdio-only MCP clients, configure that command with `args: ["--transport", "stdio"]`. Startup indexing and Markdown-cache progress are written to stderr, leaving stdout exclusively for MCP protocol messages.
@@ -107,7 +107,7 @@ VS Code has built-in MCP support via GitHub Copilot (requires VS Code 1.102+).
 
 **Using CLI (Quickest):**
 ```bash
-code --add-mcp '{"name":"qt4-docs","type":"http","url":"http://127.0.0.1:8000/mcp"}'
+code --add-mcp '{"name":"qt-docs","type":"http","url":"http://127.0.0.1:8000/mcp"}'
 ```
 
 **Using Command Palette:**
@@ -117,7 +117,7 @@ code --add-mcp '{"name":"qt4-docs","type":"http","url":"http://127.0.0.1:8000/mc
    ```json
    {
      "servers": {
-       "qt4-docs": {
+       "qt-docs": {
          "type": "http",
          "url": "http://127.0.0.1:8000/mcp"
        }
@@ -131,7 +131,7 @@ Create `.vscode/mcp.json` in your workspace (or `mcp.json` in your user profile 
 ```json
 {
   "servers": {
-    "qt4-docs": {
+    "qt-docs": {
       "type": "http",
       "url": "http://127.0.0.1:8000/mcp"
     }
@@ -147,7 +147,7 @@ Create `.vscode/mcp.json` in your workspace (or `mcp.json` in your user profile 
 Add to Claude Code using the CLI command:
 
 ```bash
-claude mcp add --transport http qt4-docs http://127.0.0.1:8000/mcp
+claude mcp add --transport http qt-docs http://127.0.0.1:8000/mcp
 ```
 
 Or configure manually in your Claude Code settings file (`~/.claude.json`):
@@ -155,7 +155,7 @@ Or configure manually in your Claude Code settings file (`~/.claude.json`):
 ```json
 {
   "mcpServers": {
-    "qt4-docs": {
+    "qt-docs": {
       "type": "http",
       "url": "http://127.0.0.1:8000/mcp"
     }
@@ -171,13 +171,13 @@ Or configure manually in your Claude Code settings file (`~/.claude.json`):
 Add to Codex CLI using the command:
 
 ```bash
-codex mcp add qt4-docs -- npx -y mcp-client-http http://127.0.0.1:8000/mcp
+codex mcp add qt-docs -- npx -y mcp-client-http http://127.0.0.1:8000/mcp
 ```
 
 Or configure manually in `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.qt4-docs]
+[mcp_servers.qt-docs]
 command = "npx"
 args = ["-y", "mcp-client-http", "http://127.0.0.1:8000/mcp"]
 ```
@@ -195,7 +195,7 @@ Kiro primarily supports stdio-based MCP servers. For HTTP servers, use an HTTP-t
    ```json
    {
      "mcpServers": {
-       "qt4-docs": {
+       "qt-docs": {
          "command": "npx",
          "args": [
            "-y",
@@ -221,7 +221,7 @@ Most MCP clients use a standard configuration format. For HTTP servers:
 ```json
 {
   "mcpServers": {
-    "qt4-docs": {
+    "qt-docs": {
       "type": "http",
       "url": "http://127.0.0.1:8000/mcp"
     }
@@ -234,7 +234,7 @@ For clients that require a command-based approach with HTTP bridge:
 ```json
 {
   "mcpServers": {
-    "qt4-docs": {
+    "qt-docs": {
       "command": "npx",
       "args": ["-y", "mcp-client-http", "http://127.0.0.1:8000/mcp"]
     }

@@ -22,7 +22,7 @@ This guide covers common issues you might encounter when using the Qt 4.8.4 Docu
 **Solution:**
 ```bash
 # Option 1: Build the index manually
-qt4-doc-build-index
+qt-doc-build-index
 
 # Option 2: Enable automatic build at startup
 echo "PREINDEX_DOCS=true" >> .env
@@ -48,7 +48,7 @@ ls -lh "$QT_DOC_BASE/.index/fts.sqlite"
 ```bash
 # Rebuild the search index
 rm -f "$QT_DOC_BASE/.index/fts.sqlite"
-qt4-doc-build-index --force
+qt-doc-build-index --force
 
 # Verify index has content
 sqlite3 "$QT_DOC_BASE/.index/fts.sqlite" "SELECT COUNT(*) FROM docs;"
@@ -128,7 +128,7 @@ pip install beautifulsoup4 lxml markdownify
 
 # 3. Clear Markdown cache and regenerate
 rm -rf "$QT_DOC_BASE/.index/md"
-qt4-doc-warm-md
+qt-doc-warm-md
 ```
 
 ### Incorrect formatting in Markdown output
@@ -198,7 +198,7 @@ python --version
 pip check
 
 # 4. Try running with verbose logging
-MCP_LOG_LEVEL=DEBUG qt4-doc-mcp-server
+MCP_LOG_LEVEL=DEBUG qt-doc-mcp-server
 ```
 
 ### Health check fails
@@ -210,10 +210,10 @@ MCP_LOG_LEVEL=DEBUG qt4-doc-mcp-server
 **Solution:**
 ```bash
 # 1. Check if server is running
-ps aux | grep qt4-doc-mcp-server
+ps aux | grep qt-doc-mcp-server
 
 # 2. Check server logs
-MCP_LOG_LEVEL=INFO qt4-doc-mcp-server
+MCP_LOG_LEVEL=INFO qt-doc-mcp-server
 
 # 3. Verify port in .env matches your curl request
 grep SERVER_PORT .env
@@ -236,8 +236,8 @@ curl -s http://127.0.0.1:$(grep SERVER_PORT .env | cut -d= -f2)/health
 rm -rf "$QT_DOC_BASE/.index"
 
 # Rebuild everything
-qt4-doc-build-index
-qt4-doc-warm-md
+qt-doc-build-index
+qt-doc-warm-md
 
 # Verify rebuild
 ls -lh "$QT_DOC_BASE/.index/md/" | head
@@ -257,10 +257,10 @@ rm -rf "$QT_DOC_BASE/.index/md"
 
 # Rebuild search index
 rm -f "$QT_DOC_BASE/.index/fts.sqlite"
-qt4-doc-build-index
+qt-doc-build-index
 
 # Warm cache with new content
-qt4-doc-warm-md
+qt-doc-warm-md
 ```
 
 ## ⚡ Performance Issues
@@ -275,7 +275,7 @@ qt4-doc-warm-md
 ```bash
 # Rebuild and optimize index
 rm -f "$QT_DOC_BASE/.index/fts.sqlite"
-qt4-doc-build-index
+qt-doc-build-index
 
 # The build process automatically runs OPTIMIZE and VACUUM
 
@@ -297,8 +297,8 @@ echo "MD_CACHE_SIZE=128" >> .env
 # Default is 512, reduce to 128 or 256
 
 # Restart server
-pkill -f qt4-doc-mcp-server
-qt4-doc-mcp-server
+pkill -f qt-doc-mcp-server
+qt-doc-mcp-server
 ```
 
 ### Slow first response
@@ -313,7 +313,7 @@ qt4-doc-mcp-server
 echo "PRECONVERT_MD=true" >> .env
 
 # Or warm cache manually
-qt4-doc-warm-md
+qt-doc-warm-md
 
 # This converts all HTML to Markdown ahead of time
 ```
@@ -327,11 +327,11 @@ If you're still experiencing issues after trying these solutions:
 1. **Check existing issues:** Search [GitHub Issues](https://github.com/jztan/qt4-doc-mcp-server/issues)
 2. **Enable debug logging:**
    ```bash
-   MCP_LOG_LEVEL=DEBUG qt4-doc-mcp-server 2>&1 | tee server.log
+   MCP_LOG_LEVEL=DEBUG qt-doc-mcp-server 2>&1 | tee server.log
    ```
 3. **Gather information:**
    - Python version: `python --version`
-   - Package version: `pip show qt4-doc-mcp-server`
+   - Package version: `pip show qt-doc-mcp-server`
    - OS and version: `uname -a` (Linux/Mac) or `ver` (Windows)
    - Error messages and stack traces
 
