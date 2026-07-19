@@ -6,8 +6,10 @@ import pytest
 from mcp.server.fastmcp.exceptions import ToolError
 
 from qt4_doc_mcp_server.cache import LRUCache, md_store_meta_path, md_store_path
-from qt4_doc_mcp_server.config import Settings, ensure_dirs
-from qt4_doc_mcp_server.doc_service import get_markdown_for_url
+from qt4_doc_mcp_server.config import Settings, ensure_dirs, markdown_cache_dir
+from qt4_doc_mcp_server.doc_service import get_markdown_for_path
+from qt4_doc_mcp_server.cli import warm_md_main
+from qt4_doc_mcp_server.config import markdown_cache_complete_path
 from qt4_doc_mcp_server.tools import configure_from_settings, read_documentation
 
 pytest.importorskip("bs4")
@@ -31,8 +33,6 @@ def sample_settings(tmp_path: Path) -> Settings:
     (tmp_path / "qsample.html").write_text(html, encoding="utf-8")
     settings = Settings(
         qt_doc_base=tmp_path,
-        md_cache_dir=tmp_path / "cache" / "md",
-        index_db_path=tmp_path / "index" / "fts.sqlite",
         preindex_docs=False,
         preconvert_md=False,
         md_cache_size=4,
@@ -41,35 +41,37 @@ def sample_settings(tmp_path: Path) -> Settings:
     return settings
 
 
-def _canonical_url() -> str:
-    return "https://doc.qt.io/archives/qt-4.8/qsample.html"
+def _document_path() -> str:
+    return "qsample.md"
 
 
 def test_metadata_persists_through_cache(sample_settings: Settings) -> None:
     lru = LRUCache(4)
-    url = _canonical_url()
+    path = _document_path()
 
-    doc = get_markdown_for_url(url, sample_settings, lru)
+    doc = get_markdown_for_path(path, sample_settings, lru)
     assert doc.title == "Sample Title"
     assert doc.links
-    assert doc.links[0]["url"].startswith("https://doc.qt.io/archives/qt-4.8/")
+    assert doc.links[0]["path"] == "qtother.md#anchor"
 
-    meta_path = md_store_meta_path(sample_settings.md_cache_dir, url)
-    md_path = md_store_path(sample_settings.md_cache_dir, url)
+    meta_path = md_store_meta_path(markdown_cache_dir(sample_settings), path)
+    md_path = md_store_path(markdown_cache_dir(sample_settings), path)
+    assert meta_path == markdown_cache_dir(sample_settings) / "qsample.meta.json"
+    assert md_path == markdown_cache_dir(sample_settings) / "qsample.md"
     assert meta_path.exists()
     assert md_path.exists()
 
-    cached = get_markdown_for_url(url, sample_settings, lru)
+    cached = get_markdown_for_path(path, sample_settings, lru)
     assert cached.title == doc.title
     assert cached.links == doc.links
 
 
 def test_section_only_not_cached(sample_settings: Settings) -> None:
-    url = _canonical_url()
-    meta_path = md_store_meta_path(sample_settings.md_cache_dir, url)
+    path = _document_path()
+    meta_path = md_store_meta_path(markdown_cache_dir(sample_settings), path)
 
-    section_doc = get_markdown_for_url(
-        url,
+    section_doc = get_markdown_for_path(
+        path,
         sample_settings,
         None,
         fragment="#section",
@@ -79,37 +81,41 @@ def test_section_only_not_cached(sample_settings: Settings) -> None:
     assert "Intro paragraph" not in section_doc.markdown
     assert not meta_path.exists()
 
-    full_doc = get_markdown_for_url(url, sample_settings, None)
+    full_doc = get_markdown_for_path(path, sample_settings, None)
     assert "Intro paragraph" in full_doc.markdown
     assert meta_path.exists()
 
 
-def test_read_documentation_invalid_url_raises(sample_settings: Settings) -> None:
+def test_read_documentation_invalid_path_raises(sample_settings: Settings) -> None:
     configure_from_settings(sample_settings)
     with pytest.raises(ToolError) as exc_info:
-        asyncio.run(read_documentation("https://example.com/other.html"))
-    assert str(exc_info.value).startswith("InvalidURL")
+        asyncio.run(read_documentation("../other.md"))
+    assert str(exc_info.value).startswith("NotAllowed")
+
+    with pytest.raises(ToolError) as exc_info:
+        asyncio.run(read_documentation("https://doc.qt.io/qt-6/qobject.md"))
+    assert str(exc_info.value).startswith("InvalidPath")
 
 
 def test_read_documentation_missing_file(sample_settings: Settings) -> None:
     configure_from_settings(sample_settings)
     with pytest.raises(ToolError) as exc_info:
         asyncio.run(
-            read_documentation("https://doc.qt.io/archives/qt-4.8/missing.html")
+            read_documentation("missing.md")
         )
     assert str(exc_info.value).startswith("NotFound")
 
 
 def test_read_documentation_returns_section_only(sample_settings: Settings) -> None:
     configure_from_settings(sample_settings)
-    result_full = asyncio.run(read_documentation(_canonical_url()))
+    result_full = asyncio.run(read_documentation(_document_path()))
     result_section = asyncio.run(
-        read_documentation(_canonical_url(), fragment="#section", section_only=True)
+        read_documentation(_document_path(), fragment="#section", section_only=True)
     )
 
     assert len(result_section["markdown"]) < len(result_full["markdown"])  # smaller slice
     assert result_section["links"]
-    assert any("#anchor" in link["url"] for link in result_section["links"])
+    assert any("#anchor" in link["path"] for link in result_section["links"])
 
 
 def test_read_documentation_applies_default_max_length(tmp_path: Path) -> None:
@@ -131,8 +137,6 @@ def test_read_documentation_applies_default_max_length(tmp_path: Path) -> None:
     
     settings = Settings(
         qt_doc_base=tmp_path,
-        md_cache_dir=tmp_path / "cache" / "md",
-        index_db_path=tmp_path / "index" / "fts.sqlite",
         preindex_docs=False,
         preconvert_md=False,
         md_cache_size=4,
@@ -141,8 +145,7 @@ def test_read_documentation_applies_default_max_length(tmp_path: Path) -> None:
     ensure_dirs(settings)
     configure_from_settings(settings)
     
-    url = "https://doc.qt.io/archives/qt-4.8/qlong.html"
-    result = asyncio.run(read_documentation(url))
+    result = asyncio.run(read_documentation("qlong.md"))
     
     # Should be truncated to 500 characters
     assert len(result["markdown"]) == 500
@@ -170,8 +173,6 @@ def test_read_documentation_explicit_max_length_overrides_default(tmp_path: Path
     
     settings = Settings(
         qt_doc_base=tmp_path,
-        md_cache_dir=tmp_path / "cache" / "md",
-        index_db_path=tmp_path / "index" / "fts.sqlite",
         preindex_docs=False,
         preconvert_md=False,
         md_cache_size=4,
@@ -180,9 +181,8 @@ def test_read_documentation_explicit_max_length_overrides_default(tmp_path: Path
     ensure_dirs(settings)
     configure_from_settings(settings)
     
-    url = "https://doc.qt.io/archives/qt-4.8/qlong2.html"
     # Explicitly request 300 characters
-    result = asyncio.run(read_documentation(url, max_length=300))
+    result = asyncio.run(read_documentation("qlong2.md", max_length=300))
     
     # Should use explicit value, not default
     assert len(result["markdown"]) == 300
@@ -209,8 +209,6 @@ def test_read_documentation_pagination_with_start_index(tmp_path: Path) -> None:
     
     settings = Settings(
         qt_doc_base=tmp_path,
-        md_cache_dir=tmp_path / "cache" / "md",
-        index_db_path=tmp_path / "index" / "fts.sqlite",
         preindex_docs=False,
         preconvert_md=False,
         md_cache_size=4,
@@ -219,18 +217,53 @@ def test_read_documentation_pagination_with_start_index(tmp_path: Path) -> None:
     ensure_dirs(settings)
     configure_from_settings(settings)
     
-    url = "https://doc.qt.io/archives/qt-4.8/qpage.html"
-    
     # Get first page
-    page1 = asyncio.run(read_documentation(url, start_index=0, max_length=50))
+    page1 = asyncio.run(read_documentation("qpage.md", start_index=0, max_length=50))
     assert len(page1["markdown"]) == 50
     assert page1["content_info"]["start_index"] == 0
     
     # Get second page
-    page2 = asyncio.run(read_documentation(url, start_index=50, max_length=50))
+    page2 = asyncio.run(read_documentation("qpage.md", start_index=50, max_length=50))
     assert len(page2["markdown"]) == 50
     assert page2["content_info"]["start_index"] == 50
     
     # Pages should have different content
     assert page1["markdown"] != page2["markdown"]
+
+
+def test_warm_md_skips_a_completed_cache(tmp_path: Path, monkeypatch, capsys) -> None:
+    (tmp_path / "qsample.html").write_text(
+        "<html><body><div class='mainContent'><h1>Sample</h1></div></body></html>",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("QT_DOC_BASE", str(tmp_path))
+    monkeypatch.setenv("PREINDEX_DOCS", "false")
+    monkeypatch.setenv("PRECONVERT_MD", "false")
+
+    assert warm_md_main([]) == 0
+    settings = Settings(qt_doc_base=tmp_path)
+    assert markdown_cache_complete_path(settings).exists()
+
+    assert warm_md_main([]) == 0
+    assert "already complete" in capsys.readouterr().err
+
+
+def test_forced_limited_warmup_clears_complete_marker(
+    tmp_path: Path, monkeypatch
+) -> None:
+    for name in ("qfirst.html", "qsecond.html"):
+        (tmp_path / name).write_text(
+            f"<html><body><div class='mainContent'><h1>{name}</h1></div></body></html>",
+            encoding="utf-8",
+        )
+    monkeypatch.setenv("QT_DOC_BASE", str(tmp_path))
+    monkeypatch.setenv("PREINDEX_DOCS", "false")
+    monkeypatch.setenv("PRECONVERT_MD", "false")
+
+    settings = Settings(qt_doc_base=tmp_path)
+    ensure_dirs(settings)
+    markdown_cache_complete_path(settings).touch()
+
+    assert warm_md_main(["--force", "--limit", "1"]) == 0
+    assert not markdown_cache_complete_path(settings).exists()
 

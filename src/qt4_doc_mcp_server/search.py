@@ -1,22 +1,26 @@
 """SQLite FTS5 index build and query implementation.
 
-This module builds a deterministic FTS5 full-text search index from local Qt 4.8.4
-HTML documentation and provides fast ranked search with context snippets.
+This module builds a deterministic FTS5 full-text search index from the active
+local Qt HTML documentation set and provides fast ranked search with context snippets.
 """
 from __future__ import annotations
 
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 import sqlite3
 import logging
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 try:
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup as _BeautifulSoup
 except Exception:
-    BeautifulSoup = None
+    BeautifulSoup: Any = None
+else:
+    BeautifulSoup = _BeautifulSoup
 
 from .errors import DocumentationError
+from .fetcher import html_to_markdown_path
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +28,7 @@ logger = logging.getLogger(__name__)
 # FTS5 schema with unicode61 tokenizer for proper text handling
 FTS5_SCHEMA = (
     "CREATE VIRTUAL TABLE IF NOT EXISTS docs USING fts5("
-    "title, headings, body, url UNINDEXED, path_rel UNINDEXED, "
+    "title, headings, body, path UNINDEXED, "
     "tokenize='unicode61 remove_diacritics 2'"
     ");"
 )
@@ -36,12 +40,15 @@ META_SCHEMA = (
     ");"
 )
 
+# Bump when the FTS schema or stored document-path semantics change.
+INDEX_FORMAT_VERSION = "1"
+
 
 @dataclass
 class SearchResult:
     """Single search result with ranking and context."""
     title: str
-    url: str
+    path: str
     score: float
     context: str
 
@@ -56,6 +63,11 @@ class IndexError(DocumentationError):
     """Error building or accessing the search index."""
     def __init__(self, message: str = "Index error"):
         super().__init__("IndexError", message)
+
+
+def _open_read_only(db_path: Path) -> sqlite3.Connection:
+    """Open an existing SQLite database without acquiring write capability."""
+    return sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)
 
 
 def ensure_index(db_path: Path) -> None:
@@ -90,12 +102,15 @@ def _extract_text_content(html: str) -> Tuple[str, str, str]:
 
     soup = BeautifulSoup(html, "lxml" if "lxml" else "html.parser")
 
-    # Remove navigation and chrome (same as convert.py)
+    # Remove navigation and chrome (same as convert.py).  Qt 5/6 wrap the
+    # page body in div.header#qtdocheader, which must be retained.
     for sel in [
         "div.header", "div.nav", "div.sidebar",
         "div.breadcrumbs", "div.ft", "div.footer", "div.qt-footer"
     ]:
         for el in soup.select(sel):
+            if sel == "div.header" and el.select_one("div.mainContent"):
+                continue
             el.decompose()
 
     # Extract title
@@ -135,7 +150,11 @@ def _extract_text_content(html: str) -> Tuple[str, str, str]:
     return title, headings_text, body_text
 
 
-def build_index(db_path: Path, docs_base: Path, progress_callback=None) -> dict:
+def build_index(
+    db_path: Path,
+    docs_base: Path | None,
+    progress_callback=None,
+) -> dict:
     """Build the FTS5 index from local HTML docs.
 
     Args:
@@ -146,7 +165,7 @@ def build_index(db_path: Path, docs_base: Path, progress_callback=None) -> dict:
     Returns:
         dict with stats: indexed, skipped, errors
     """
-    if not docs_base.exists() or not docs_base.is_dir():
+    if docs_base is None or not docs_base.exists() or not docs_base.is_dir():
         raise IndexError(f"Documentation base directory not found: {docs_base}")
 
     # Collect all HTML files in deterministic order
@@ -175,10 +194,10 @@ def build_index(db_path: Path, docs_base: Path, progress_callback=None) -> dict:
             cur.execute(FTS5_SCHEMA)
             cur.execute(META_SCHEMA)
 
-            # Store metadata
+            # Store the schema and document-path format version.
             cur.execute(
                 "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-                ("doc_base", str(docs_base))
+                ("index_format_version", INDEX_FORMAT_VERSION)
             )
             cur.execute(
                 "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
@@ -202,15 +221,14 @@ def build_index(db_path: Path, docs_base: Path, progress_callback=None) -> dict:
                         stats["skipped"] += 1
                         continue
 
-                    # Compute relative path and canonical URL
+                    # Index the public Markdown path corresponding to the
+                    # root-relative source HTML path.
                     path_rel = html_path.relative_to(docs_base).as_posix()
-                    canonical_url = f"https://doc.qt.io/archives/qt-4.8/{path_rel}"
-
-                    # Insert into FTS5 table
+                    document_path = html_to_markdown_path(path_rel)
                     cur.execute(
-                        "INSERT INTO docs (title, headings, body, url, path_rel) "
-                        "VALUES (?, ?, ?, ?, ?)",
-                        (title, headings, body, canonical_url, path_rel)
+                        "INSERT INTO docs (title, headings, body, path) "
+                        "VALUES (?, ?, ?, ?)",
+                        (title, headings, body, document_path)
                     )
 
                     stats["indexed"] += 1
@@ -243,6 +261,19 @@ def build_index(db_path: Path, docs_base: Path, progress_callback=None) -> dict:
         raise IndexError(f"Failed to build index: {e}")
 
 
+def index_is_current(db_path: Path) -> bool:
+    """Return whether a local index has the current schema and path format."""
+    if not db_path.exists():
+        return False
+    try:
+        # sqlite3.Connection's context manager does not close the connection.
+        with closing(_open_read_only(db_path)) as con:
+            rows = dict(con.execute("SELECT key, value FROM meta"))
+        return rows.get("index_format_version") == INDEX_FORMAT_VERSION
+    except (sqlite3.Error, OSError):
+        return False
+
+
 def search(
     db_path: Path,
     query: str,
@@ -267,7 +298,7 @@ def search(
         return []
 
     try:
-        con = sqlite3.connect(str(db_path))
+        con = _open_read_only(db_path)
         try:
             cur = con.cursor()
 
@@ -282,7 +313,7 @@ def search(
                 """
                 SELECT
                     title,
-                    url,
+                    path,
                     bm25(docs) as score,
                     snippet(docs, 2, '<b>', '</b>', '…', 10) as context
                 FROM docs
@@ -295,7 +326,7 @@ def search(
 
             results = []
             for row in cur.fetchall():
-                title, url, score, context = row
+                title, path, score, context = row
 
                 # Clean up context snippet
                 if not context or context.strip() == "":
@@ -304,7 +335,7 @@ def search(
 
                 results.append(SearchResult(
                     title=title or "Untitled",
-                    url=url,
+                    path=path,
                     score=abs(score),  # BM25 returns negative scores; abs for clarity
                     context=context
                 ))

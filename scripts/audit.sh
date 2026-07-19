@@ -10,10 +10,9 @@
 # .venv has no pip, so bare `pip-audit` silently falls back to whatever
 # global Python is on PATH and audits unrelated packages.
 #
-# This repo does not commit uv.lock, so pins are compiled from
-# pyproject.toml at audit time. That means the audit tracks the newest
-# versions the constraints allow, which is exactly what a fresh
-# `pip install` would get.
+# uv.lock is committed for reproducible development installs. Runtime
+# dependencies are still compiled from pyproject.toml here so the audit tracks
+# the newest versions a fresh `pip install` can resolve within our constraints.
 #
 # Keep the ignore list here, in one place, so local preflight and CI
 # cannot drift.

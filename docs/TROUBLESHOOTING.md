@@ -15,14 +15,14 @@ This guide covers common issues you might encounter when using the Qt 4.8.4 Docu
 
 ### Search index not found
 
-**Problem:** `SearchUnavailable: Search index not found at .index/fts.sqlite`
+**Problem:** `SearchUnavailable: Search index not found at $QT_DOC_BASE/.index/fts.sqlite`
 
 **Cause:** The FTS5 search index hasn't been built yet.
 
 **Solution:**
 ```bash
 # Option 1: Build the index manually
-qt4-doc-build-index
+qt-doc-build-index
 
 # Option 2: Enable automatic build at startup
 echo "PREINDEX_DOCS=true" >> .env
@@ -32,10 +32,10 @@ echo "PREINDEX_DOCS=true" >> .env
 **Verification:**
 ```bash
 # Check if index file exists
-ls -lh .index/fts.sqlite
+ls -lh "$QT_DOC_BASE/.index/fts.sqlite"
 
 # Expected output shows file size (typically 20-50MB)
-# -rw-r--r--  1 user  staff   32M Oct 26 08:45 .index/fts.sqlite
+# -rw-r--r--  1 user  staff   32M Oct 26 08:45 fts.sqlite
 ```
 
 ### Search returns no results
@@ -47,11 +47,11 @@ ls -lh .index/fts.sqlite
 **Solution:**
 ```bash
 # Rebuild the search index
-rm -f .index/fts.sqlite
-qt4-doc-build-index --force
+rm -f "$QT_DOC_BASE/.index/fts.sqlite"
+qt-doc-build-index --force
 
 # Verify index has content
-sqlite3 .index/fts.sqlite "SELECT COUNT(*) FROM docs;"
+sqlite3 "$QT_DOC_BASE/.index/fts.sqlite" "SELECT COUNT(*) FROM docs;"
 # Should return a number > 0 (typically around 2000-3000)
 ```
 
@@ -127,8 +127,8 @@ pip list | grep -E "beautifulsoup4|lxml|markdownify"
 pip install beautifulsoup4 lxml markdownify
 
 # 3. Clear Markdown cache and regenerate
-rm -rf .cache/md
-qt4-doc-warm-md
+rm -rf "$QT_DOC_BASE/.index/md"
+qt-doc-warm-md
 ```
 
 ### Incorrect formatting in Markdown output
@@ -143,13 +143,15 @@ qt4-doc-warm-md
 cat $QT_DOC_BASE/qstring.html | head -50
 
 # 2. Clear cache for specific page
-rm -rf .cache/md/$(echo -n "qstring.html" | md5)*/
+rm -f "$QT_DOC_BASE/.index/md/qstring.md" "$QT_DOC_BASE/.index/md/qstring.meta.json"
 
 # 3. Test conversion manually
 uv run python -c "
-from qt4_doc_mcp_server.doc_service import get_markdown_for_url
-md = get_markdown_for_url('https://doc.qt.io/archives/qt-4.8/qstring.html')
-print(md[:500])
+from qt4_doc_mcp_server.config import load_settings
+from qt4_doc_mcp_server.doc_service import get_markdown_for_path
+settings = load_settings()
+doc = get_markdown_for_path('qstring.md', settings)
+print(doc.markdown[:500])
 "
 ```
 
@@ -196,7 +198,7 @@ python --version
 pip check
 
 # 4. Try running with verbose logging
-MCP_LOG_LEVEL=DEBUG qt4-doc-mcp-server
+MCP_LOG_LEVEL=DEBUG qt-doc-mcp
 ```
 
 ### Health check fails
@@ -208,10 +210,10 @@ MCP_LOG_LEVEL=DEBUG qt4-doc-mcp-server
 **Solution:**
 ```bash
 # 1. Check if server is running
-ps aux | grep qt4-doc-mcp-server
+ps aux | grep qt-doc-mcp
 
 # 2. Check server logs
-MCP_LOG_LEVEL=INFO qt4-doc-mcp-server
+MCP_LOG_LEVEL=INFO qt-doc-mcp
 
 # 3. Verify port in .env matches your curl request
 grep SERVER_PORT .env
@@ -231,15 +233,15 @@ curl -s http://127.0.0.1:$(grep SERVER_PORT .env | cut -d= -f2)/health
 **Solution:**
 ```bash
 # Full reset (safest option)
-rm -rf .cache/md .index/fts.sqlite
+rm -rf "$QT_DOC_BASE/.index"
 
 # Rebuild everything
-qt4-doc-build-index
-qt4-doc-warm-md
+qt-doc-build-index
+qt-doc-warm-md
 
 # Verify rebuild
-ls -lh .cache/md/ | head
-ls -lh .index/fts.sqlite
+ls -lh "$QT_DOC_BASE/.index/md/" | head
+ls -lh "$QT_DOC_BASE/.index/fts.sqlite"
 ```
 
 ### Stale cache after docs update
@@ -251,14 +253,14 @@ ls -lh .index/fts.sqlite
 **Solution:**
 ```bash
 # Clear Markdown cache
-rm -rf .cache/md
+rm -rf "$QT_DOC_BASE/.index/md"
 
 # Rebuild search index
-rm -f .index/fts.sqlite
-qt4-doc-build-index
+rm -f "$QT_DOC_BASE/.index/fts.sqlite"
+qt-doc-build-index
 
 # Warm cache with new content
-qt4-doc-warm-md
+qt-doc-warm-md
 ```
 
 ## ⚡ Performance Issues
@@ -272,13 +274,13 @@ qt4-doc-warm-md
 **Solution:**
 ```bash
 # Rebuild and optimize index
-rm -f .index/fts.sqlite
-qt4-doc-build-index
+rm -f "$QT_DOC_BASE/.index/fts.sqlite"
+qt-doc-build-index
 
 # The build process automatically runs OPTIMIZE and VACUUM
 
 # Verify index is optimized
-sqlite3 .index/fts.sqlite "PRAGMA integrity_check;"
+sqlite3 "$QT_DOC_BASE/.index/fts.sqlite" "PRAGMA integrity_check;"
 # Should return: ok
 ```
 
@@ -295,8 +297,8 @@ echo "MD_CACHE_SIZE=128" >> .env
 # Default is 512, reduce to 128 or 256
 
 # Restart server
-pkill -f qt4-doc-mcp-server
-qt4-doc-mcp-server
+pkill -f qt-doc-mcp
+qt-doc-mcp
 ```
 
 ### Slow first response
@@ -311,7 +313,7 @@ qt4-doc-mcp-server
 echo "PRECONVERT_MD=true" >> .env
 
 # Or warm cache manually
-qt4-doc-warm-md
+qt-doc-warm-md
 
 # This converts all HTML to Markdown ahead of time
 ```
@@ -325,7 +327,7 @@ If you're still experiencing issues after trying these solutions:
 1. **Check existing issues:** Search [GitHub Issues](https://github.com/jztan/qt4-doc-mcp-server/issues)
 2. **Enable debug logging:**
    ```bash
-   MCP_LOG_LEVEL=DEBUG qt4-doc-mcp-server 2>&1 | tee server.log
+   MCP_LOG_LEVEL=DEBUG qt-doc-mcp 2>&1 | tee server.log
    ```
 3. **Gather information:**
    - Python version: `python --version`

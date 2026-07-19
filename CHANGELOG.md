@@ -10,6 +10,9 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Dependency audit script (`scripts/audit.sh`) using pip-audit, run in CI and release preflight
 - `server.json` manifest for MCP Registry publication
 - Tests for release script helpers (version bumping, changelog stamping, notes persistence)
+- Qt 5 and Qt 6 documentation support with automatic docset detection
+- Stdio transport and an agent-friendly `qt-doc-cli` full-text search command
+- `QT_DOC_STATE_DIR` override for storing all derived state outside read-only documentation roots
 
 ### Changed
 - Updated `mcp[cli]` dependency: 1.19.0 → 1.28.1 (capped below 2.0 pre-releases)
@@ -19,9 +22,23 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Updated `markdownify` dependency: 1.2.0 → 1.2.3
 - Updated `lxml` dependency: 6.0.0 → 6.1.1
 - Updated dev dependencies: pytest 9.x, pytest-asyncio 1.4, ruff 0.15
+- Document identifiers and MCP tool parameters now use root-relative Markdown `path` values instead of online `url` values
+- Search indexes and Markdown caches now default to `$QT_DOC_BASE/.index`
+- `PRECONVERT_MD` now defaults to `false`
+- New CLI commands use the `qt-doc-*` prefix; `qt4-doc-mcp-server` remains as a compatibility alias
 
 ### Fixed
 - Removed unused imports and a membership-test style issue flagged by ruff 0.15
+- Open search and index-format SQLite connections in read-only mode, allowing concurrent server instances without write access
+- Close SQLite connections after index-format checks
+- Clear the Markdown cache completion marker before a forced, limited warmup
+- Distinguish an outdated search index from a missing one in `qt-doc-cli` output
+
+### Migration notes for 0.6.0
+- Set `PRECONVERT_MD=true` explicitly to retain the previous eager Markdown warmup behavior.
+- Old working-directory `.index` and `.cache` directories are not migrated and can be removed after rebuilding derived state in `$QT_DOC_BASE/.index` (or `QT_DOC_STATE_DIR`).
+- `INDEX_DB_PATH` and `MD_CACHE_DIR` in existing `.env` files are now ignored with a startup warning; replace both with `QT_DOC_STATE_DIR` when a writable override is needed.
+- Update MCP callers to pass and consume root-relative `path` values instead of `url` values.
 
 ## [0.5.0] - 2025-10-26
 ### Added

@@ -1,9 +1,9 @@
 [project]
 name = "qt4-doc-mcp-server"
 version = "0.5.0"
-description = "Offline MCP Server for Qt 4.8.4 documentation"
+description = "Offline MCP Server for local Qt 4.8, Qt 5, and Qt 6 documentation"
 requires-python = ">=3.11"
-keywords = ["qt4", "mcp", "model-context-protocol", "documentation", "c++"]
+keywords = ["qt", "qt4", "qt5", "qt6", "mcp", "model-context-protocol", "documentation", "c++"]
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
@@ -38,13 +38,12 @@ Repository = "https://github.com/jztan/qt4-doc-mcp-server.git"
 Issues = "https://github.com/jztan/qt4-doc-mcp-server/issues"
 Changelog = "https://github.com/jztan/qt4-doc-mcp-server/blob/master/CHANGELOG.md"
 
-[project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "ruff"]
-
 [project.scripts]
+qt-doc-mcp = "qt4_doc_mcp_server.main:run"
 qt4-doc-mcp-server = "qt4_doc_mcp_server.main:run"
-qt4-doc-warm-md = "qt4_doc_mcp_server.cli:warm_md_main"
-qt4-doc-build-index = "qt4_doc_mcp_server.cli:build_index_main"
+qt-doc-cli = "qt4_doc_mcp_server.search_cli:search_cli_main"
+qt-doc-build-index = "qt4_doc_mcp_server.cli:build_index_main"
+qt-doc-warm-md = "qt4_doc_mcp_server.cli:warm_md_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/qt4_doc_mcp_server"]
@@ -52,3 +51,11 @@ packages = ["src/qt4_doc_mcp_server"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.15.22",
+    "ty>=0.0.61",
+]

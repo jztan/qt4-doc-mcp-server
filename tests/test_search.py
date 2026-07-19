@@ -1,16 +1,25 @@
 """Tests for search.py FTS5 indexing and querying."""
 from pathlib import Path
+import sqlite3
 
 import pytest
 
-from qt4_doc_mcp_server.config import Settings, ensure_dirs, probe_fts5
+from qt4_doc_mcp_server.config import (
+    Settings,
+    ensure_dirs,
+    markdown_cache_complete_path,
+    probe_fts5,
+)
 from qt4_doc_mcp_server.search import (
     build_index,
     search,
     SearchResult,
     SearchUnavailable,
+    _open_read_only,
+    index_is_current,
 )
 from qt4_doc_mcp_server.tools import configure_from_settings, search_documentation
+from qt4_doc_mcp_server.search_cli import search_cli_main
 
 pytest.importorskip("bs4")
 
@@ -81,8 +90,6 @@ def sample_settings(tmp_path: Path, sample_docs: Path) -> Settings:
     """Create test settings with sample docs."""
     settings = Settings(
         qt_doc_base=sample_docs,
-        md_cache_dir=tmp_path / "cache" / "md",
-        index_db_path=tmp_path / "index" / "fts.sqlite",
         preindex_docs=False,
         preconvert_md=False,
         md_cache_size=4,
@@ -126,6 +133,19 @@ def test_build_index_with_progress_callback(sample_settings: Settings) -> None:
     assert stats["indexed"] == 3
 
 
+def test_fts_connections_are_read_only(sample_settings: Settings) -> None:
+    """Search paths must not acquire write access to a shared FTS database."""
+    db_path = sample_settings.index_db_path
+    build_index(db_path, sample_settings.qt_doc_base)
+
+    con = _open_read_only(db_path)
+    try:
+        with pytest.raises(sqlite3.OperationalError):
+            con.execute("DELETE FROM meta")
+    finally:
+        con.close()
+
+
 def test_search_returns_relevant_results(sample_settings: Settings) -> None:
     """Test that search returns relevant results ranked by BM25."""
     db_path = sample_settings.index_db_path
@@ -166,7 +186,7 @@ def test_search_multiple_terms(sample_settings: Settings) -> None:
     results = search(db_path, "signals slots")
 
     assert len(results) > 0, "Should find results for multi-term query"
-    # The signals-slots.html should rank highly
+    # The signals-slots.md document should rank highly
     titles = [r.title for r in results]
     assert "Signals and Slots" in titles
 
@@ -208,10 +228,10 @@ def test_search_result_structure(sample_settings: Settings) -> None:
 
     assert isinstance(result, SearchResult)
     assert isinstance(result.title, str)
-    assert isinstance(result.url, str)
+    assert isinstance(result.path, str)
     assert isinstance(result.score, float)
     assert isinstance(result.context, str)
-    assert result.url.startswith("https://doc.qt.io/archives/qt-4.8/")
+    assert result.path == "qstring.md"
 
 
 @pytest.mark.asyncio
@@ -235,7 +255,7 @@ async def test_search_documentation_tool(sample_settings: Settings) -> None:
     # Check result structure
     first_result = result["results"][0]
     assert "title" in first_result
-    assert "url" in first_result
+    assert "path" in first_result
     assert "score" in first_result
     assert "context" in first_result
 
@@ -292,6 +312,50 @@ async def test_search_documentation_scope_validation(
         await search_documentation(query="test", scope="api")
 
     assert "currently supported" in str(exc_info.value).lower()
+
+
+def test_search_cli_prepares_index_and_markdown_cache(
+    sample_settings: Settings, monkeypatch, capsys
+) -> None:
+    assert sample_settings.qt_doc_base is not None
+    monkeypatch.setenv("QT_DOC_BASE", str(sample_settings.qt_doc_base))
+    monkeypatch.setenv("PREINDEX_DOCS", "false")
+    monkeypatch.setenv("PRECONVERT_MD", "false")
+
+    assert search_cli_main(["QString"]) == 0
+    output = capsys.readouterr().out
+    markdown_path = sample_settings.qt_doc_base / ".index" / "md" / "qstring.md"
+    assert "QString Class Reference" in output
+    assert str(markdown_path.resolve()) in output
+    assert sample_settings.index_db_path.exists()
+    assert markdown_cache_complete_path(sample_settings).exists()
+    assert markdown_path.exists()
+    assert (sample_settings.qt_doc_base / ".index" / "md" / "qwidget.md").exists()
+
+
+def test_search_cli_rebuilds_an_outdated_index(
+    sample_settings: Settings, monkeypatch, capsys
+) -> None:
+    assert sample_settings.qt_doc_base is not None
+    monkeypatch.setenv("QT_DOC_BASE", str(sample_settings.qt_doc_base))
+    monkeypatch.setenv("PREINDEX_DOCS", "false")
+    monkeypatch.setenv("PRECONVERT_MD", "false")
+    build_index(sample_settings.index_db_path, sample_settings.qt_doc_base)
+    con = sqlite3.connect(sample_settings.index_db_path)
+    try:
+        con.execute("DELETE FROM meta WHERE key = 'index_format_version'")
+        con.execute(
+            "INSERT INTO meta (key, value) VALUES (?, ?)",
+            ("document_path_format_version", "2"),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+    assert not index_is_current(sample_settings.index_db_path)
+    assert search_cli_main(["QString"]) == 0
+    assert "Search index is outdated; rebuilding it now" in capsys.readouterr().err
+    assert index_is_current(sample_settings.index_db_path)
 
 
 def test_build_index_deterministic(sample_settings: Settings) -> None:

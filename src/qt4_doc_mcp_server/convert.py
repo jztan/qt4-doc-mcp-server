@@ -6,10 +6,10 @@ falls back to a simple text converter. See DESIGN.md for detailed rules.
 from __future__ import annotations
 
 from typing import TypedDict, List
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 from .errors import DocumentationError
-from .fetcher import canonicalize_url
+from .fetcher import canonicalize_path, html_to_markdown_path
 
 try:
     from bs4 import BeautifulSoup
@@ -49,7 +49,9 @@ def extract_main(html: str):
             title = html[start + 7 : end].strip()
         return None, None, title
 
-    # Strip common chrome
+    # Strip common chrome.  Qt 5/6 place the actual page body inside
+    # div.header#qtdocheader, so only remove header elements that do not
+    # contain a main-content block.
     for sel in [
         "div.header",
         "div.nav",
@@ -60,6 +62,8 @@ def extract_main(html: str):
         "div.qt-footer",
     ]:
         for el in soup.select(sel):
+            if sel == "div.header" and el.select_one("div.mainContent"):
+                continue
             el.decompose()
 
     main = (
@@ -75,43 +79,48 @@ def extract_main(html: str):
     return soup, main, title
 
 
-def normalize_links(root, canonical_url: str) -> List[dict]:
-    """Rewrite internal links to canonical absolute URLs and collect them.
+def normalize_links(root, document_path: str) -> List[dict]:
+    """Convert local HTML links to relative Markdown links and collect paths.
 
-    Returns a list of {text, url} for normalized links.
+    The converted Markdown retains the source link's relative structure for
+    filesystem browsing.  Link metadata contains a root-relative ``path`` for
+    direct use with ``read_documentation``.
     """
     links: List[dict] = []
     if root is None or BeautifulSoup is None:
         return links
+
+    base_url = "https://local.invalid/" + document_path
     for a in root.find_all("a"):
         href = a.get("href")
         if not href:
             continue
-        if href.startswith("#"):
-            # Keep fragment-only
-            links.append({"text": a.get_text(strip=True), "url": canonical_url + href})
+        parsed_href = urlparse(href)
+        if parsed_href.scheme or parsed_href.netloc:
+            links.append({"text": a.get_text(strip=True), "url": href})
             continue
-        abs_url = urljoin(canonical_url, href)
-        parsed = urlparse(abs_url)
-        link_url = abs_url
-        if (
-            parsed.netloc
-            and parsed.netloc.lower() == "doc.qt.io"
-            and parsed.path.startswith("/archives/qt-4.8/")
-        ):
+
+        markdown_href = href
+        if parsed_href.path:
             try:
-                link_url = canonicalize_url(abs_url)
+                markdown_href = urlunparse(
+                    parsed_href._replace(path=html_to_markdown_path(parsed_href.path))
+                )
             except DocumentationError:
-                link_url = abs_url
-            a["href"] = link_url
-        elif not parsed.netloc and not parsed.scheme:
-            # Relative path that urljoin could not normalize; keep absolute form
-            link_url = abs_url
-            a["href"] = link_url
-        else:
-            link_url = abs_url
-        # Collect normalized link target (always absolute when possible)
-        links.append({"text": a.get_text(strip=True), "url": link_url})
+                links.append({"text": a.get_text(strip=True), "url": href})
+                continue
+        a["href"] = markdown_href
+
+        absolute = urljoin(base_url, markdown_href)
+        resolved = urlparse(absolute)
+        try:
+            link_path = canonicalize_path(resolved.path)
+        except DocumentationError:
+            links.append({"text": a.get_text(strip=True), "url": href})
+            continue
+        if resolved.fragment:
+            link_path += "#" + resolved.fragment
+        links.append({"text": a.get_text(strip=True), "path": link_path})
     return links
 
 
@@ -148,7 +157,7 @@ def to_markdown(root) -> str:
     if root is None:
         return ""
     try:
-        import markdownify  # type: ignore
+        import markdownify
 
         return markdownify.markdownify(str(root), heading_style="ATX")
     except Exception:  # pragma: no cover - optional dep fallback

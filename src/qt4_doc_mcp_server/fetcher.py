@@ -1,54 +1,41 @@
-"""Offline fetcher utilities: canonical URL validation and path mapping."""
+"""Offline fetcher utilities: safe Markdown-path validation and HTML loading."""
 from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
-from urllib.parse import urlparse
-import posixpath
 
-from .errors import FetchError, InvalidURLError, NotAllowedError, NotFoundError
-
-ARCHIVE_PREFIX = "/archives/qt-4.8/"
-CANONICAL_HOST = "doc.qt.io"
+from .errors import FetchError, InvalidPathError, NotAllowedError, NotFoundError
 
 
-def canonicalize_url(url: str) -> str:
-    """Validate and normalize a canonical Qt 4.8 docs URL.
+def canonicalize_path(path: str) -> str:
+    """Validate and normalize a root-relative Markdown document path."""
+    if not path or not path.strip():
+        raise InvalidPathError("Documentation path must not be empty")
+    if "#" in path or "?" in path:
+        raise InvalidPathError("Pass fragments separately; path must not contain '#' or '?'")
+    if "://" in path:
+        raise InvalidPathError("Expected a local documentation path, not a URL")
 
-    Raises ValueError on invalid/unsupported URLs.
-    """
-    u = urlparse(url)
-    host = (u.netloc or "").lower()
-    if host != CANONICAL_HOST or u.scheme not in {"http", "https"}:
-        raise InvalidURLError("URL host or scheme not allowed")
-    if not u.path.startswith(ARCHIVE_PREFIX):
-        raise NotAllowedError("URL not under Qt 4.8 archive path")
-    # Normalize path: collapse duplicate slashes, etc.
-    path = posixpath.normpath(u.path)
-    if not path.startswith(ARCHIVE_PREFIX.rstrip("/")):
-        raise NotAllowedError("Normalized path escaped archive prefix")
-    # Rebuild URL with normalized parts, preserve query/fragment
-    norm = f"{u.scheme}://{CANONICAL_HOST}{path}"
-    if u.params:
-        norm += ";" + u.params
-    if u.query:
-        norm += "?" + u.query
-    if u.fragment:
-        norm += "#" + u.fragment
-    return norm
+    normalized = path.replace("\\", "/").lstrip("/")
+    posix_path = PurePosixPath(normalized)
+    if posix_path.is_absolute() or any(part in {"", ".", ".."} for part in posix_path.parts):
+        raise NotAllowedError("Documentation path must stay under QT_DOC_BASE")
+    if posix_path.suffix.lower() != ".md":
+        raise InvalidPathError("Documentation paths must use the '.md' extension")
+    return posix_path.as_posix()
 
 
-def url_to_path(canonical_url: str, base: Path) -> Path:
-    """Map a canonical URL to a local file path under QT_DOC_BASE."""
-    u = urlparse(canonical_url)
-    rel = u.path[len(ARCHIVE_PREFIX) :].lstrip("/")
-    # Prevent traversal using PurePosixPath (platform-independent)
-    posix_path = PurePosixPath("/" + rel)
-    try:
-        safe = posix_path.relative_to("/")
-    except ValueError as exc:
-        raise NotAllowedError("Path traversal attempt detected") from exc
-    # Convert to local path (handles Windows/Unix differences)
-    resolved = (base / Path(str(safe))).resolve()
+def html_to_markdown_path(html_path: str) -> str:
+    """Convert an offline root-relative HTML path to its public Markdown path."""
+    posix_path = PurePosixPath(html_path.replace("\\", "/").lstrip("/"))
+    if posix_path.suffix.lower() != ".html":
+        raise InvalidPathError("Source documentation path must use the '.html' extension")
+    return posix_path.with_suffix(".md").as_posix()
+
+
+def path_to_local_path(document_path: str, base: Path) -> Path:
+    """Map a validated Markdown path to its source HTML file under ``QT_DOC_BASE``."""
+    safe_path = PurePosixPath(canonicalize_path(document_path)).with_suffix(".html")
+    resolved = (base / Path(str(safe_path))).resolve()
     try:
         resolved.relative_to(base.resolve())
     except ValueError as exc:  # pragma: no cover - safety guard

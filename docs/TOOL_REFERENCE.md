@@ -1,13 +1,13 @@
 # Tool Reference
 
-Complete reference for all MCP tools provided by the Qt 4.8.4 Documentation MCP Server.
+Complete reference for all MCP tools provided by the Qt Documentation MCP Server. The server serves one active local Qt 4.8, Qt 5, or Qt 6 documentation set at a time.
 
 ## Available Tools
 
 The server provides **2 MCP tools**:
 
 1. [`read_documentation`](#read_documentation) - Read and convert Qt documentation pages
-2. [`search_documentation`](#search_documentation) - Search across all Qt 4.8.4 documentation
+2. [`search_documentation`](#search_documentation) - Search across the active documentation set
 
 ---
 
@@ -19,7 +19,7 @@ Read and convert specific Qt documentation pages to Markdown format.
 
 - **Fragment extraction** - Extract specific sections using `#fragment` syntax (`#details`, `#public-functions`, etc.)
 - **Pagination** - Control output size with `start_index` and `max_length` parameters
-- **Normalized links** - All internal Qt links converted to canonical URLs
+- **Normalized links** - Internal links converted to root-relative local paths
 - **GFDL attribution** - Automatic licensing attribution appended
 - **Section-only mode** - Return just the requested fragment without full page context
 
@@ -27,7 +27,7 @@ Read and convert specific Qt documentation pages to Markdown format.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `url` | string | Yes | - | Qt documentation URL (canonical or relative) |
+| `path` | string | Yes | - | Root-relative file path under `QT_DOC_BASE` |
 | `fragment` | string | No | `null` | HTML fragment ID to extract (e.g., `#details`) |
 | `section_only` | boolean | No | `false` | If true, return only the fragment section |
 | `start_index` | integer | No | `0` | Starting character index for pagination |
@@ -38,10 +38,9 @@ Read and convert specific Qt documentation pages to Markdown format.
 | Field | Type | Description |
 |-------|------|-------------|
 | `title` | string | Page title extracted from HTML |
-| `url` | string | Original URL requested by client |
-| `canonical_url` | string | Normalized Qt documentation URL |
+| `path` | string | Normalized root-relative local document path |
 | `markdown` | string | Converted Markdown content |
-| `links` | array | List of internal Qt documentation links with `text` and `url` |
+| `links` | array | Local links use `text` and `path`; external links use `text` and `url` |
 | `attribution` | string | GFDL 1.3 license attribution |
 | `content_info` | object | Pagination metadata (only when truncated) |
 
@@ -62,7 +61,7 @@ Read and convert specific Qt documentation pages to Markdown format.
   "params": {
     "name": "read_documentation",
     "arguments": {
-      "url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
+      "path": "qstring.md",
       "fragment": "#details",
       "section_only": true,
       "max_length": 2000
@@ -77,17 +76,16 @@ Read and convert specific Qt documentation pages to Markdown format.
 {
   "result": {
     "title": "QString Class",
-    "url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
-    "canonical_url": "https://doc.qt.io/archives/qt-4.8/qstring.html",
+    "path": "qstring.md",
     "markdown": "# QString Class\n\n## Detailed Description\n\nThe QString class provides...",
     "links": [
       {
         "text": "QStringList",
-        "url": "https://doc.qt.io/archives/qt-4.8/qstringlist.html"
+        "path": "qstringlist.md"
       },
       {
         "text": "QByteArray",
-        "url": "https://doc.qt.io/archives/qt-4.8/qbytearray.html"
+        "path": "qbytearray.md"
       }
     ],
     "attribution": "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3",
@@ -115,16 +113,17 @@ Read and convert specific Qt documentation pages to Markdown format.
 - Set `section_only=true` to get just the fragment without page header/footer
 - Fragment extraction bypasses cache for fresh content
 
-**URL Formats:**
-- Canonical: `https://doc.qt.io/archives/qt-4.8/qstring.html`
-- Relative: `qstring.html` (automatically normalized)
-- With fragment: `qstring.html#details`
+**Path formats:**
+- Qt 4 example: `qstring.md`
+- Qt 5/6 Core example: `qtcore/qstring.md`
+- Qt 5/6 global page example: `qtdoc/accessible.md`
+- Pass fragments separately with `fragment: "#details"`
 
 ---
 
 ## `search_documentation`
 
-Full-text search across all Qt 4.8.4 documentation using SQLite FTS5.
+Full-text search across the active local Qt documentation set using SQLite FTS5.
 
 ### Features
 
@@ -155,7 +154,7 @@ Full-text search across all Qt 4.8.4 documentation using SQLite FTS5.
 | Field | Type | Description |
 |-------|------|-------------|
 | `title` | string | Page title |
-| `url` | string | Canonical Qt documentation URL |
+| `path` | string | Root-relative local documentation path |
 | `score` | float | BM25 relevance score (higher = more relevant) |
 | `context` | string | Snippet with `<b>` tags highlighting matches |
 
@@ -184,19 +183,19 @@ Full-text search across all Qt 4.8.4 documentation using SQLite FTS5.
     "results": [
       {
         "title": "Signals and Slots",
-        "url": "https://doc.qt.io/archives/qt-4.8/signalsandslots.html",
+        "path": "signalsandslots.md",
         "score": 12.34,
         "context": "…used for communication between objects. <b>Signals</b> and <b>slots</b> mechanism is a central…"
       },
       {
         "title": "QObject Class Reference",
-        "url": "https://doc.qt.io/archives/qt-4.8/qobject.html",
+        "path": "qobject.md",
         "score": 8.76,
         "context": "…The QObject class supports <b>signals</b> and <b>slots</b> for inter-object communication…"
       },
       {
         "title": "Signals & Slots",
-        "url": "https://doc.qt.io/archives/qt-4.8/signalsandslots-syntaxes.html",
+        "path": "signalsandslots-syntaxes.md",
         "score": 7.23,
         "context": "…Connecting <b>signals</b> and <b>slots</b> with different syntaxes…"
       }
@@ -225,7 +224,7 @@ Full-text search across all Qt 4.8.4 documentation using SQLite FTS5.
 - Use `…` (ellipsis) to indicate truncation
 
 **Index Building:**
-- Build index with: `qt4-doc-build-index`
+- Build index with: `qt-doc-build-index`
 - Or set `PREINDEX_DOCS=true` in `.env` for automatic build
 - Index typically 20-50MB, contains ~2000-3000 pages
 - Rebuild with `--force` flag if docs are updated
@@ -254,10 +253,10 @@ All tools return errors in standard MCP format:
 
 | Code | Cause | Solution |
 |------|-------|----------|
-| `InvalidURL` | Malformed or unsupported URL | Check URL format matches Qt archives pattern |
-| `NotAllowed` | URL outside Qt 4.8.4 docs scope | Use only Qt 4.8.4 documentation URLs |
+| `InvalidPath` | A URL, fragment, or malformed document path was supplied | Pass a root-relative Markdown path such as `qtcore/qobject.md` |
+| `NotAllowed` | Path escapes `QT_DOC_BASE` | Use a root-relative document path without `..` |
 | `NotFound` | Documentation file not found | Verify `QT_DOC_BASE` points to correct directory |
-| `SearchUnavailable` | Search index not built | Run `qt4-doc-build-index` or set `PREINDEX_DOCS=true` |
+| `SearchUnavailable` | Search index not built/current | Run `qt-doc-build-index` or set `PREINDEX_DOCS=true` |
 | `ParseError` | HTML parsing failed | Check if HTML file is corrupted |
 | `Timeout` | Operation took too long | Retry or contact support |
 
@@ -267,7 +266,7 @@ All tools return errors in standard MCP format:
 {
   "error": {
     "code": "SearchUnavailable",
-    "message": "Search index not found at .index/fts.sqlite. Run 'qt4-doc-build-index' to build the index."
+    "message": "Search index not found under $QT_DOC_BASE/.index/. Run 'qt-doc-build-index' to build the index."
   }
 }
 ```

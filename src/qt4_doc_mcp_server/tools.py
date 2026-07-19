@@ -1,4 +1,4 @@
-"""MCP tools for the Qt 4.8.4 Docs server."""
+"""MCP tools for the active local Qt documentation set."""
 
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ from mcp.server.fastmcp.exceptions import ToolError
 
 from .server import mcp
 from .cache import LRUCache, CachedDoc
-from .config import Settings, load_settings
-from .doc_service import get_markdown_for_url
+from .config import Settings, index_db_path, load_settings
+from .doc_service import get_markdown_for_path
 from .errors import (
     DocumentationError,
     FetchError,
     TimeoutDocumentationError,
 )
-from .search import search, SearchUnavailable, IndexError as SearchIndexError
+from .search import index_is_current, search, SearchUnavailable, IndexError as SearchIndexError
 
 
 _settings: Settings | None = None
@@ -45,7 +45,7 @@ def _get_lru() -> LRUCache:
     return _md_lru
 
 
-def _format_result(doc: CachedDoc, url: str, *, start_index: int | None, max_length: int | None) -> dict:
+def _format_result(doc: CachedDoc, *, start_index: int | None, max_length: int | None) -> dict:
     markdown = doc.markdown
     total_length = len(markdown)
     truncated = False
@@ -59,11 +59,10 @@ def _format_result(doc: CachedDoc, url: str, *, start_index: int | None, max_len
             markdown = markdown[start:]
             truncated = start > 0
     
-    clean_attr = "Content © The Qt Company Ltd./Digia — GNU Free Documentation License 1.3"
+    clean_attr = "Content © The Qt Company Ltd. and contributors — GNU Free Documentation License 1.3"
     result = {
         "title": doc.title,
-        "url": url,
-        "canonical_url": doc.canonical_url,
+        "path": doc.path,
         "markdown": markdown,
         "attribution": clean_attr,
         "links": [dict(link) for link in doc.links],
@@ -83,30 +82,30 @@ def _format_result(doc: CachedDoc, url: str, *, start_index: int | None, max_len
 
 @mcp.tool()
 async def read_documentation(
-    url: str,
+    path: str,
     fragment: str | None = None,
     section_only: bool = False,
     start_index: int | None = None,
     max_length: int | None = None,
 ) -> dict:
-    """Fetch a Qt 4.8.4 docs page and return Markdown.
+    """Fetch a page from the active local Qt documentation set and return Markdown.
     
     Args:
-        url: Qt documentation URL
+        path: Root-relative Markdown path (for example, 'qtcore/qobject.md')
         fragment: Optional HTML fragment (e.g., '#details')
         section_only: If True with fragment, return only that section
         start_index: Character offset to start from (for pagination)
         max_length: Maximum characters to return (defaults to configured limit)
     
     Returns:
-        Dictionary with title, url, markdown, links, and pagination info
+        Dictionary with title, path, markdown, links, and pagination info
     """
     settings = _get_settings()
     lru = _get_lru()
 
     try:
-        doc = get_markdown_for_url(
-            url,
+        doc = get_markdown_for_path(
+            path,
             settings,
             lru,
             fragment=fragment,
@@ -126,7 +125,7 @@ async def read_documentation(
     if effective_max_length is None:
         effective_max_length = settings.default_max_markdown_length
 
-    return _format_result(doc, url, start_index=start_index, max_length=effective_max_length)
+    return _format_result(doc, start_index=start_index, max_length=effective_max_length)
 
 
 @mcp.tool()
@@ -135,7 +134,7 @@ async def search_documentation(
     limit: int = 10,
     scope: str = "all",
 ) -> dict:
-    """Search Qt 4.8.4 documentation for relevant pages.
+    """Search the active local Qt documentation set for relevant pages.
 
     Args:
         query: Search terms (FTS5 query syntax supported)
@@ -143,7 +142,7 @@ async def search_documentation(
         scope: Search scope - 'all', 'api', or 'guides' (currently 'all' only)
 
     Returns:
-        Dictionary with results array containing title, url, score, and context snippet
+        Dictionary with results array containing title, path, score, and context snippet
     """
     settings = _get_settings()
 
@@ -161,8 +160,11 @@ async def search_documentation(
         raise ToolError("Only scope='all' is currently supported")
 
     try:
+        if not index_is_current(index_db_path(settings)):
+            raise SearchUnavailable("Search index is missing or belongs to a different documentation set")
+
         results = search(
-            db_path=settings.index_db_path,
+            db_path=index_db_path(settings),
             query=query,
             limit=limit,
             scope=scope,
@@ -172,7 +174,7 @@ async def search_documentation(
             "results": [
                 {
                     "title": r.title,
-                    "url": r.url,
+                    "path": r.path,
                     "score": r.score,
                     "context": r.context,
                 }
@@ -185,7 +187,7 @@ async def search_documentation(
     except SearchUnavailable as exc:
         raise ToolError(
             f"Search index not available: {exc}. "
-            "Run 'qt4-doc-build-index' to build the index."
+            "Run 'qt-doc-build-index' to build the index for the active docset."
         ) from exc
     except SearchIndexError as exc:
         raise ToolError(f"Search error: {exc}") from exc

@@ -19,14 +19,9 @@ jobs:
       - name: Install uv
         run: pip install uv
       - name: Set up environment
-        run: |
-          uv venv
-          source .venv/bin/activate
-          uv pip install -e .[dev]
+        run: uv sync --locked
       - name: Run tests
-        run: |
-          source .venv/bin/activate
-          uv run python -m pytest --verbose
+        run: uv run --locked python -m pytest --verbose
       - name: Audit dependencies
         run: bash scripts/audit.sh
 

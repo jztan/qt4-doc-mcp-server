@@ -50,7 +50,7 @@ We welcome contributions in several forms:
 
 3. **Install Dependencies**
    ```bash
-   uv pip install -e .[dev]
+   uv sync --locked
    ```
 
 4. **Setup Qt Documentation**
@@ -67,7 +67,7 @@ We welcome contributions in several forms:
 
 6. **Build Search Index**
    ```bash
-   qt4-doc-build-index
+   qt-doc-build-index
    ```
 
 7. **Run Tests**
