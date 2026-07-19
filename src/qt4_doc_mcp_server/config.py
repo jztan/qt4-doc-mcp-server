@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import logging
 import os
+import shutil
 import sqlite3
 from typing import Tuple
 
@@ -85,6 +86,21 @@ def index_db_path(settings: Settings) -> Path:
 def markdown_cache_dir(settings: Settings) -> Path:
     """Return the Markdown cache directory for the active local documentation set."""
     return mcp_state_dir(settings) / "md"
+
+
+def markdown_cache_complete_path(settings: Settings) -> Path:
+    """Return the marker written after a complete Markdown-cache warmup."""
+    return markdown_cache_dir(settings) / ".complete"
+
+
+def clear_markdown_cache(settings: Settings) -> None:
+    """Remove cached Markdown after rebuilding the co-located FTS index."""
+    cache_dir = markdown_cache_dir(settings)
+    try:
+        shutil.rmtree(cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+    except FileNotFoundError:
+        cache_dir.mkdir(parents=True, exist_ok=True)
 
 
 def ensure_dirs(settings: Settings) -> None:

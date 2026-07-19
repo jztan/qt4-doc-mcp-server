@@ -2,7 +2,7 @@ from pathlib import Path
 
 from qt4_doc_mcp_server.config import Settings, ensure_dirs, index_db_path, markdown_cache_dir
 from qt4_doc_mcp_server.doc_service import get_markdown_for_path
-from qt4_doc_mcp_server.search import build_index, index_matches_docs, search
+from qt4_doc_mcp_server.search import build_index, index_is_current, search
 
 
 def _qt6_docs(tmp_path: Path) -> Path:
@@ -48,9 +48,9 @@ def test_qt6_docset_detection_reading_and_search(tmp_path: Path) -> None:
     assert "Retained Qt 6 content" in doc.markdown
     assert doc.links[0]["path"] == "qtcore/qother.md#member"
 
-    stats = build_index(index_db_path(settings), docs, docset=settings.docset)
+    stats = build_index(index_db_path(settings), docs)
     assert stats == {"indexed": 1, "skipped": 0, "errors": 0}
-    assert index_matches_docs(index_db_path(settings), docs, settings.docset)
+    assert index_is_current(index_db_path(settings))
     results = search(index_db_path(settings), "Retained")
     assert results[0].path == document_path
     assert "Retained" in results[0].context
@@ -80,7 +80,7 @@ def test_qt5_qtdoc_pages_retain_local_paths(tmp_path: Path) -> None:
     document_path = "qtdoc/accessible.md"
     assert "Accessible application content" in get_markdown_for_path(document_path, settings).markdown
 
-    build_index(index_db_path(settings), docs, docset=settings.docset)
+    build_index(index_db_path(settings), docs)
     assert search(index_db_path(settings), "Accessible")[0].path == document_path
 
 

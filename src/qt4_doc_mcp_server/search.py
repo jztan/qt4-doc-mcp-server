@@ -18,7 +18,6 @@ except Exception:
 else:
     BeautifulSoup = _BeautifulSoup
 
-from .docsets import DocSet, QT4_DOCSET
 from .errors import DocumentationError
 from .fetcher import html_to_markdown_path
 
@@ -40,8 +39,8 @@ META_SCHEMA = (
     ");"
 )
 
-# Bump when search result path semantics change.
-DOCUMENT_PATH_FORMAT_VERSION = "2"
+# Bump when the FTS schema or stored document-path semantics change.
+INDEX_FORMAT_VERSION = "1"
 
 
 @dataclass
@@ -149,7 +148,6 @@ def build_index(
     db_path: Path,
     docs_base: Path | None,
     progress_callback=None,
-    docset: DocSet = QT4_DOCSET,
 ) -> dict:
     """Build the FTS5 index from local HTML docs.
 
@@ -157,7 +155,6 @@ def build_index(
         db_path: Path to SQLite database file
         docs_base: Root directory containing HTML files
         progress_callback: Optional callable(current, total, path) for progress updates
-        docset: Active documentation set recorded in index provenance
 
     Returns:
         dict with stats: indexed, skipped, errors
@@ -191,22 +188,15 @@ def build_index(
             cur.execute(FTS5_SCHEMA)
             cur.execute(META_SCHEMA)
 
-            # Store metadata
+            # Store the format version. The database resides inside QT_DOC_BASE,
+            # so no external documentation-root provenance is required.
             cur.execute(
                 "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-                ("doc_base", str(docs_base))
+                ("index_format_version", INDEX_FORMAT_VERSION)
             )
             cur.execute(
                 "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
                 ("total_files", str(len(html_files)))
-            )
-            cur.execute(
-                "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-                ("docset", docset.key)
-            )
-            cur.execute(
-                "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-                ("document_path_format_version", DOCUMENT_PATH_FORMAT_VERSION)
             )
 
             # Index each file
@@ -266,19 +256,18 @@ def build_index(
         raise IndexError(f"Failed to build index: {e}")
 
 
-def index_matches_docs(
-    db_path: Path, docs_base: Path | None, docset: DocSet = QT4_DOCSET
-) -> bool:
-    """Return whether an existing index belongs to this exact local docset."""
-    if docs_base is None or not db_path.exists():
+def index_is_current(db_path: Path) -> bool:
+    """Return whether a local index has the current schema and path format."""
+    if not db_path.exists():
         return False
     try:
         with sqlite3.connect(str(db_path)) as con:
             rows = dict(con.execute("SELECT key, value FROM meta"))
+        # Accept the immediately preceding Markdown-path metadata format; its
+        # schema and stored paths are identical to the current format.
         return (
-            rows.get("doc_base") == str(docs_base)
-            and rows.get("docset") == docset.key
-            and rows.get("document_path_format_version") == DOCUMENT_PATH_FORMAT_VERSION
+            rows.get("index_format_version") == INDEX_FORMAT_VERSION
+            or rows.get("document_path_format_version") == "2"
         )
     except (sqlite3.Error, OSError):
         return False

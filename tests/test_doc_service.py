@@ -8,6 +8,8 @@ from mcp.server.fastmcp.exceptions import ToolError
 from qt4_doc_mcp_server.cache import LRUCache, md_store_meta_path, md_store_path
 from qt4_doc_mcp_server.config import Settings, ensure_dirs, markdown_cache_dir
 from qt4_doc_mcp_server.doc_service import get_markdown_for_path
+from qt4_doc_mcp_server.cli import warm_md_main
+from qt4_doc_mcp_server.config import markdown_cache_complete_path
 from qt4_doc_mcp_server.tools import configure_from_settings, read_documentation
 
 pytest.importorskip("bs4")
@@ -227,4 +229,21 @@ def test_read_documentation_pagination_with_start_index(tmp_path: Path) -> None:
     
     # Pages should have different content
     assert page1["markdown"] != page2["markdown"]
+
+
+def test_warm_md_skips_a_completed_cache(tmp_path: Path, monkeypatch, capsys) -> None:
+    (tmp_path / "qsample.html").write_text(
+        "<html><body><div class='mainContent'><h1>Sample</h1></div></body></html>",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("QT_DOC_BASE", str(tmp_path))
+    monkeypatch.setenv("PREINDEX_DOCS", "false")
+    monkeypatch.setenv("PRECONVERT_MD", "false")
+
+    assert warm_md_main([]) == 0
+    settings = Settings(qt_doc_base=tmp_path)
+    assert markdown_cache_complete_path(settings).exists()
+
+    assert warm_md_main([]) == 0
+    assert "already complete" in capsys.readouterr().err
 

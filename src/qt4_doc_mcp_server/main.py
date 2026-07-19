@@ -20,7 +20,6 @@ if __package__ in (None, ""):
 from dotenv import load_dotenv
 
 from .config import (
-    active_docset,
     ensure_dirs,
     index_db_path,
     load_settings,
@@ -82,31 +81,15 @@ def run(argv: list[str] | None = None) -> None:
     if not probe_fts5():
         logger.warning("SQLite FTS5 not available; search indexing will not work.")
 
-    # Optionally preconvert Markdown store at startup
-    if settings.preconvert_md:
-        try:
-            from .cli import warm_md_main
-
-            logger.info("PRECONVERT_MD=true: warming Markdown store before start...")
-            rc = warm_md_main([])
-            if rc != 0:
-                logger.warning("Markdown preconversion exited with code %s", rc)
-        except Exception as e:
-            logger.warning("Markdown preconversion failed: %s", e)
-
-    # Optionally build search index at startup
+    # Build first: a successful rebuild clears Markdown derived from an older
+    # source snapshot before any optional cache warmup runs.
     if settings.preindex_docs:
         try:
             from .cli import build_index_main
+            from .search import index_is_current
 
-            logger.info("PREINDEX_DOCS=true: building search index before start...")
-            from .search import index_matches_docs
-
-            if not index_matches_docs(
-                index_db_path(settings),
-                settings.qt_doc_base,
-                active_docset(settings),
-            ):
+            if not index_is_current(index_db_path(settings)):
+                logger.info("PREINDEX_DOCS=true: building search index before start...")
                 rc = build_index_main([])
                 if rc != 0:
                     logger.warning("Index build exited with code %s", rc)
@@ -114,6 +97,18 @@ def run(argv: list[str] | None = None) -> None:
                 logger.info("Search index already exists at %s", index_db_path(settings))
         except Exception as e:
             logger.warning("Index build failed: %s", e)
+
+    # Optionally preconvert Markdown store at startup.
+    if settings.preconvert_md:
+        try:
+            from .cli import warm_md_main
+
+            logger.info("PRECONVERT_MD=true: checking Markdown cache before start...")
+            rc = warm_md_main([])
+            if rc != 0:
+                logger.warning("Markdown preconversion exited with code %s", rc)
+        except Exception as e:
+            logger.warning("Markdown preconversion failed: %s", e)
 
     level = settings.mcp_log_level.upper()
     logging.basicConfig(level=getattr(logging, level, logging.WARNING))

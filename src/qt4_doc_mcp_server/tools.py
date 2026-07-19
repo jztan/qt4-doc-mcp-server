@@ -9,14 +9,14 @@ from mcp.server.fastmcp.exceptions import ToolError
 
 from .server import mcp
 from .cache import LRUCache, CachedDoc
-from .config import Settings, active_docset, index_db_path, load_settings
+from .config import Settings, index_db_path, load_settings
 from .doc_service import get_markdown_for_path
 from .errors import (
     DocumentationError,
     FetchError,
     TimeoutDocumentationError,
 )
-from .search import index_matches_docs, search, SearchUnavailable, IndexError as SearchIndexError
+from .search import index_is_current, search, SearchUnavailable, IndexError as SearchIndexError
 
 
 _settings: Settings | None = None
@@ -160,11 +160,7 @@ async def search_documentation(
         raise ToolError("Only scope='all' is currently supported")
 
     try:
-        if not index_matches_docs(
-            index_db_path(settings),
-            settings.qt_doc_base,
-            active_docset(settings),
-        ):
+        if not index_is_current(index_db_path(settings)):
             raise SearchUnavailable("Search index is missing or belongs to a different documentation set")
 
         results = search(
