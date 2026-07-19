@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+- Docker support: multi-stage Dockerfile (non-root, healthcheck), docker-compose
+  setup with read-only docs mount and persistent state volume, and
+  `.env.docker.example`
+- Multi-arch (amd64/arm64) container images published to
+  `ghcr.io/jztan/qt4-doc-mcp-server` by the release workflow, promoted to
+  version tags only after PyPI publish succeeds
+
 ## [0.6.1] - 2026-07-19
 ### Fixed
 - Added the `mcp-name: io.github.jztan/qt4-doc-mcp-server` marker to the README

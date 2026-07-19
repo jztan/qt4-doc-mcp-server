@@ -84,6 +84,35 @@ qt-doc-cli "accessible applications" --limit 5
 
 The command reads the same `.env` settings as the server. Before searching, it automatically builds a missing/outdated FTS index and fully warms an incomplete Markdown cache. It then prints each result's title, absolute `.md` path, and FTS snippet to stdout; preparation messages, errors, and warnings go to stderr. Use `qt-doc-warm-md --force` after changing documentation in place.
 
+## 🐳 Docker
+
+Prebuilt multi-arch images (amd64/arm64) are published to GitHub Container Registry on every release. The container is offline-only: you mount your prepared Qt `doc/html` directory read-only at `/docs`, and all derived state (Markdown cache and search index) lives in a volume at `/data`.
+
+```bash
+# Prepare Qt docs on the host first (one-time)
+python scripts/prepare_qt48_docs.py --segments 4
+
+# Run from GHCR
+docker run -d --name qt4-doc-mcp-server -p 8000:8000 \
+  -v /path/to/qt-docs/html:/docs:ro \
+  -v qt4-doc-data:/data \
+  ghcr.io/jztan/qt4-doc-mcp-server:latest
+
+# Verify
+curl -s http://127.0.0.1:8000/health
+```
+
+First start converts and indexes the documentation into the `/data` volume; subsequent starts reuse it. Depending on the docset size, the first start can take a minute or two before the health endpoint responds.
+
+### Docker Compose
+
+```bash
+cp .env.docker.example .env.docker   # set QT_DOC_HTML_PATH
+docker compose --env-file .env.docker up -d
+```
+
+Point your MCP client at `http://127.0.0.1:8000/mcp` (streamable HTTP). Qt documentation is licensed under GFDL 1.3; the container serves your local copy and never redistributes it.
+
 ## ⚙️ Configuration
 Create a `.env` file in the repo root. The helper script writes sensible defaults; adjust as needed:
 
