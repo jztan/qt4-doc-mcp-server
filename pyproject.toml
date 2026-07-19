@@ -38,9 +38,6 @@ Repository = "https://github.com/jztan/qt4-doc-mcp-server.git"
 Issues = "https://github.com/jztan/qt4-doc-mcp-server/issues"
 Changelog = "https://github.com/jztan/qt4-doc-mcp-server/blob/master/CHANGELOG.md"
 
-[project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "ruff"]
-
 [project.scripts]
 qt4-doc-mcp-server = "qt4_doc_mcp_server.main:run"
 qt4-doc-warm-md = "qt4_doc_mcp_server.cli:warm_md_main"
@@ -52,3 +49,11 @@ packages = ["src/qt4_doc_mcp_server"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.15.22",
+    "ty>=0.0.61",
+]

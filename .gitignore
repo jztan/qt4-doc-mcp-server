@@ -12,7 +12,6 @@ dist/
 build/
 *.egg-info/
 .pytest_cache/
-uv.lock
 .env
 qt4-docs-html/
 release_notes_v*.md
