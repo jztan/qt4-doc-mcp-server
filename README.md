@@ -78,7 +78,7 @@ After building the index, agents can search and receive materialized absolute Ma
 qt-doc-cli "accessible applications" --limit 5
 ```
 
-The command reads the same `.env` settings as the server, writes any matching Markdown cache entries, and prints each result's title, absolute `.md` path, and FTS snippet to stdout. Errors and warnings go to stderr. Use `qt-doc-warm-md --force` after changing documentation in place.
+The command reads the same `.env` settings as the server. Before searching, it automatically builds a missing/outdated FTS index and fully warms an incomplete Markdown cache. It then prints each result's title, absolute `.md` path, and FTS snippet to stdout; preparation messages, errors, and warnings go to stderr. Use `qt-doc-warm-md --force` after changing documentation in place.
 
 ## ⚙️ Configuration
 Create a `.env` file in the repo root. The helper script writes sensible defaults; adjust as needed:
@@ -87,7 +87,7 @@ Create a `.env` file in the repo root. The helper script writes sensible default
 | --- | --- | --- |
 | `QT_DOC_BASE` | _required_ | Absolute path to one Qt 4.8, Qt 5, or Qt 6 HTML documentation root. The server detects the active docset. |
 | `PREINDEX_DOCS` | `true` | Build search index automatically at startup if not present. |
-| `PRECONVERT_MD` | `true` | Warm the Markdown cache automatically at startup. |
+| `PRECONVERT_MD` | `false` | Warm the Markdown cache automatically at MCP startup. |
 | `SERVER_HOST` | `127.0.0.1` | Bind address for the FastMCP server (`0.0.0.0` for containers). |
 | `SERVER_PORT` | `8000` | TCP port for streamable HTTP transport. |
 | `MCP_LOG_LEVEL` | `WARNING` | Logging verbosity (DEBUG/INFO/WARNING/ERROR). |

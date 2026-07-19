@@ -187,7 +187,7 @@ async def search_documentation(
     except SearchUnavailable as exc:
         raise ToolError(
             f"Search index not available: {exc}. "
-            "Run 'qt4-doc-build-index' to build the index for the active docset."
+            "Run 'qt-doc-build-index' to build the index for the active docset."
         ) from exc
     except SearchIndexError as exc:
         raise ToolError(f"Search error: {exc}") from exc

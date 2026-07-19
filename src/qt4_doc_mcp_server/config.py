@@ -23,7 +23,7 @@ class Settings:
     server_port: int = 8000
     qt_doc_base: Path | None = None
     preindex_docs: bool = True
-    preconvert_md: bool = True
+    preconvert_md: bool = False
     md_cache_size: int = 512
     mcp_log_level: str = "WARNING"
     default_max_markdown_length: int = 20000

@@ -93,6 +93,10 @@ def warm_md_main(argv: list[str] | None = None) -> int:
     )
     if not limited and errors == 0:
         complete_marker.touch()
+        return 0
+    if errors:
+        print(f"Markdown warmup failed for {errors} file(s).", file=sys.stderr)
+        return 1
     return 0
 
 
