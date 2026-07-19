@@ -1,0 +1,27 @@
+services:
+  qt4-doc-mcp-server:
+    image: ghcr.io/jztan/qt4-doc-mcp-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qt4-doc-mcp-server
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env.docker
+        required: false
+    volumes:
+      # QT_DOC_HTML_PATH is interpolated by compose; set it in the shell
+      # or run: docker compose --env-file .env.docker up -d
+      - ${QT_DOC_HTML_PATH:-./qt4-docs-html}:/docs:ro
+      - qt4-doc-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  qt4-doc-data:

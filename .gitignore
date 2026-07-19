@@ -13,6 +13,7 @@ build/
 *.egg-info/
 .pytest_cache/
 .env
+.env.docker
 qt4-docs-html/
 release_notes_v*.md
 .mcp.json
