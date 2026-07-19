@@ -21,3 +21,5 @@ docs_internal/
 
 CLAUDE.md
 settings.local.json
+.mcpregistry_github_token
+.mcpregistry_registry_token
