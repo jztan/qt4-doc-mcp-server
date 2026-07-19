@@ -70,6 +70,16 @@ qt-doc-mcp-server
 curl -s http://127.0.0.1:8000/health
 ```
 
+### Agent-friendly FTS CLI
+
+After building the index, agents can search and receive materialized absolute Markdown paths:
+
+```bash
+qt-doc-cli "accessible applications" --limit 5
+```
+
+The command reads the same `.env` settings as the server, writes any matching Markdown cache entries, and prints each result's title, absolute `.md` path, and FTS snippet to stdout. Errors and warnings go to stderr. Use `qt-doc-warm-md --force` after changing documentation in place.
+
 ## ⚙️ Configuration
 Create a `.env` file in the repo root. The helper script writes sensible defaults; adjust as needed:
 

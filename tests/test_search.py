@@ -11,6 +11,7 @@ from qt4_doc_mcp_server.search import (
     SearchUnavailable,
 )
 from qt4_doc_mcp_server.tools import configure_from_settings, search_documentation
+from qt4_doc_mcp_server.search_cli import search_cli_main
 
 pytest.importorskip("bs4")
 
@@ -290,6 +291,23 @@ async def test_search_documentation_scope_validation(
         await search_documentation(query="test", scope="api")
 
     assert "currently supported" in str(exc_info.value).lower()
+
+
+def test_search_cli_materializes_markdown_paths(
+    sample_settings: Settings, monkeypatch, capsys
+) -> None:
+    assert sample_settings.qt_doc_base is not None
+    build_index(sample_settings.index_db_path, sample_settings.qt_doc_base)
+    monkeypatch.setenv("QT_DOC_BASE", str(sample_settings.qt_doc_base))
+    monkeypatch.setenv("PREINDEX_DOCS", "false")
+    monkeypatch.setenv("PRECONVERT_MD", "false")
+
+    assert search_cli_main(["QString"]) == 0
+    output = capsys.readouterr().out
+    markdown_path = sample_settings.qt_doc_base / ".index" / "md" / "qstring.md"
+    assert "QString Class Reference" in output
+    assert str(markdown_path.resolve()) in output
+    assert markdown_path.exists()
 
 
 def test_build_index_deterministic(sample_settings: Settings) -> None:
