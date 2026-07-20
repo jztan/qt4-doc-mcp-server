@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-arch (amd64/arm64) container images published to
   `ghcr.io/jztan/qt4-doc-mcp-server` by the release workflow, promoted to
   version tags only after PyPI publish succeeds
+- `deploy.sh` convenience script: preflight checks, `.env.docker` bootstrap,
+  compose build/start, and health wait
 
 ## [0.6.1] - 2026-07-19
 ### Fixed

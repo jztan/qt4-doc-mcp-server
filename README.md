@@ -111,6 +111,12 @@ cp .env.docker.example .env.docker   # set QT_DOC_HTML_PATH
 docker compose --env-file .env.docker up -d
 ```
 
+Or use the convenience script, which checks Docker is running, creates `.env.docker` on first run, builds and starts the service, and waits for the health endpoint:
+
+```bash
+./deploy.sh
+```
+
 Point your MCP client at `http://127.0.0.1:8000/mcp` (streamable HTTP). Qt documentation is licensed under GFDL 1.3; the container serves your local copy and never redistributes it.
 
 ## ⚙️ Configuration
