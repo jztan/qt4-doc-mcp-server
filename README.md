@@ -21,7 +21,7 @@ Bring locally installed Qt 4.8, Qt 5, or Qt 6 documentation to your AI coding as
 - 🛠️ **MCP Standard** - Compatible with Claude, VS Code, and other MCP clients
 
 ## 📦 Prerequisites
-- **Python 3.11+** required
+- **Python 3.11+** required (not needed when using the Docker image)
 - **Qt HTML Documentation** for one supported release (Qt 4.8, Qt 5, or Qt 6)
   - The included helper downloads Qt 4.8.4 only.
   - Point `QT_DOC_BASE` directly at an existing Qt 5/6 offline documentation root.
@@ -44,7 +44,7 @@ uv sync --locked
 
 ### Setup Qt Documentation
 ```bash
-# Automated setup (recommended)
+# Automated setup (recommended, requires the cloned repo)
 python scripts/prepare_qt48_docs.py --segments 4
 
 # This will:
@@ -54,6 +54,16 @@ python scripts/prepare_qt48_docs.py --segments 4
 # - Copy GFDL license file
 ```
 
+The helper script ships with the repo, not the PyPI package. Installed from PyPI only? Download the docs manually instead:
+
+```bash
+curl -LO https://download.qt.io/archive/qt/4.8/4.8.4/qt-everywhere-opensource-src-4.8.4.tar.gz
+tar -xzf qt-everywhere-opensource-src-4.8.4.tar.gz qt-everywhere-opensource-src-4.8.4/doc/html
+mv qt-everywhere-opensource-src-4.8.4/doc/html ./qt4-docs-html
+```
+
+Then create a `.env` with `QT_DOC_BASE` pointing at that directory (see Configuration below).
+
 ### Quick Start Commands
 ```bash
 # 1. Install
@@ -62,7 +72,7 @@ pip install qt4-doc-mcp-server
 # 2. Setup Qt docs
 python scripts/prepare_qt48_docs.py --segments 4
 
-# 3. Build search index
+# 3. Build search index (optional; the server builds it on first start)
 qt-doc-build-index
 
 # 4. Start server
@@ -138,6 +148,9 @@ Or use the convenience script, which checks Docker is running, creates `.env.doc
 Point your MCP client at `http://127.0.0.1:8000/mcp` (streamable HTTP). Qt documentation is licensed under GFDL 1.3; the container serves your local copy and never redistributes it.
 
 ## ⚙️ Configuration
+
+These settings apply to native (pip or source) runs. In Docker they are already set inside the container (`QT_DOC_BASE=/docs`, `QT_DOC_STATE_DIR=/data`, `SERVER_HOST=0.0.0.0`); the `QT_DOC_HTML_PATH` variable in `.env.docker` is not a server setting, just the host path mounted at `/docs`.
+
 Create a `.env` file in the repo root. The helper script writes sensible defaults; adjust as needed:
 
 | Variable | Default | Purpose |
