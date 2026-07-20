@@ -1,6 +1,6 @@
 [project]
 name = "qt4-doc-mcp-server"
-version = "0.6.1"
+version = "0.7.0"
 description = "Offline MCP Server for local Qt 4.8, Qt 5, and Qt 6 documentation"
 requires-python = ">=3.11"
 keywords = ["qt", "qt4", "qt5", "qt6", "mcp", "model-context-protocol", "documentation", "c++"]
