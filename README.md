@@ -89,12 +89,12 @@ The command reads the same `.env` settings as the server. Before searching, it a
 Prebuilt multi-arch images (amd64/arm64) are published to GitHub Container Registry on every release. The container is offline-only: you mount your prepared Qt `doc/html` directory read-only at `/docs`, and all derived state (Markdown cache and search index) lives in a volume at `/data`.
 
 ```bash
-# Prepare Qt docs on the host first (one-time)
+# Prepare Qt docs on the host first (one-time, writes to ./qt4-docs-html)
 python scripts/prepare_qt48_docs.py --segments 4
 
 # Run from GHCR
 docker run -d --name qt4-doc-mcp-server -p 8000:8000 \
-  -v /path/to/qt-docs/html:/docs:ro \
+  -v "$PWD/qt4-docs-html:/docs:ro" \
   -v qt4-doc-data:/data \
   ghcr.io/jztan/qt4-doc-mcp-server:latest
 
@@ -105,6 +105,14 @@ curl -s http://127.0.0.1:8000/health
 First start converts and indexes the documentation into the `/data` volume; subsequent starts reuse it. Depending on the docset size, the first start can take a minute or two before the health endpoint responds.
 
 ### Docker Compose
+
+With docs in the default `./qt4-docs-html` location, no configuration is needed:
+
+```bash
+docker compose up -d
+```
+
+For docs elsewhere (including Qt 5 or Qt 6 `doc/html` trees, which the server also supports), point `QT_DOC_HTML_PATH` at them:
 
 ```bash
 cp .env.docker.example .env.docker   # set QT_DOC_HTML_PATH
