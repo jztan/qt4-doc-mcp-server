@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .cache import CachedDoc, LRUCache, md_store_read, md_store_write
 from .config import Settings, markdown_cache_dir
-from .convert import extract_main, normalize_links, slice_fragment, to_markdown
+from .convert import collect_links, extract_main, normalize_links, slice_fragment, to_markdown
 from .errors import DocumentationError, FetchError, ParseError
 from .fetcher import canonicalize_path, load_html, path_to_local_path
 
@@ -94,9 +94,11 @@ def get_markdown_for_path(
         return full_doc
 
     try:
-        fragment_links = normalize_links(fragment_root, document_path)
+        # Hrefs inside the fragment were already normalized on the full page;
+        # only collect them, never normalize twice.
+        fragment_links = collect_links(fragment_root, document_path)
     except Exception as exc:
-        raise ParseError(f"Failed to normalize links for fragment '{fragment}'") from exc
+        raise ParseError(f"Failed to collect links for fragment '{fragment}'") from exc
 
     try:
         fragment_markdown = to_markdown(fragment_root)

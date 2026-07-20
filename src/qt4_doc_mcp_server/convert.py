@@ -111,17 +111,50 @@ def normalize_links(root, document_path: str) -> List[dict]:
                 continue
         a["href"] = markdown_href
 
-        absolute = urljoin(base_url, markdown_href)
-        resolved = urlparse(absolute)
-        try:
-            link_path = canonicalize_path(resolved.path)
-        except DocumentationError:
-            links.append({"text": a.get_text(strip=True), "url": href})
-            continue
-        if resolved.fragment:
-            link_path += "#" + resolved.fragment
-        links.append({"text": a.get_text(strip=True), "path": link_path})
+        links.append(
+            _link_entry(a.get_text(strip=True), markdown_href, base_url, fallback_href=href)
+        )
     return links
+
+
+def _link_entry(text: str, href: str, base_url: str, fallback_href: str | None = None) -> dict:
+    """Classify an already-normalized Markdown href into link metadata."""
+    fallback = fallback_href if fallback_href is not None else href
+    parsed = urlparse(href)
+    if parsed.scheme or parsed.netloc:
+        return {"text": text, "url": fallback}
+    absolute = urljoin(base_url, href)
+    resolved = urlparse(absolute)
+    try:
+        link_path = canonicalize_path(resolved.path)
+    except DocumentationError:
+        return {"text": text, "url": fallback}
+    if resolved.fragment:
+        link_path += "#" + resolved.fragment
+    return {"text": text, "path": link_path}
+
+
+def collect_links(root, document_path: str) -> List[dict]:
+    """Collect link metadata from a subtree whose hrefs are already
+    normalized by ``normalize_links`` (running that again would fail on the
+    converted ``.md`` hrefs)."""
+    links: List[dict] = []
+    if root is None or BeautifulSoup is None:
+        return links
+    base_url = "https://local.invalid/" + document_path
+    for a in root.find_all("a"):
+        href = a.get("href")
+        if not href:
+            continue
+        links.append(_link_entry(a.get_text(strip=True), href, base_url))
+    return links
+
+
+def _heading_level(tag) -> int | None:
+    name = getattr(tag, "name", None)
+    if name and len(name) == 2 and name[0].lower() == "h" and name[1].isdigit():
+        return int(name[1])
+    return None
 
 
 def slice_fragment(soup, root, fragment: str | None, section_only: bool):
@@ -129,22 +162,34 @@ def slice_fragment(soup, root, fragment: str | None, section_only: bool):
         return root
     frag = fragment.lstrip("#")
     target = root.find(id=frag)
-    if not target:
+    if target is None:
         # legacy name anchors
         target = root.find(attrs={"name": frag})
-    if not target:
+    if target is None or not section_only:
         return root
-    if target.name and target.name.lower().startswith("h") and len(target.name) == 2 and target.name[1].isdigit():
-        level = int(target.name[1])
-        wrapper = soup.new_tag("div")
-        wrapper.append(target)
-        for sib in target.find_all_next():
-            if sib.name and sib.name.lower().startswith("h") and len(sib.name) == 2 and sib.name[1].isdigit():
-                if int(sib.name[1]) <= level:
-                    break
-            wrapper.append(sib)
-        return wrapper if section_only else root
-    return target if section_only else root
+    # Qt docs mark anchors with empty <a name> tags placed inside the
+    # heading (function docs) or just before it (guide sections); resolve
+    # the anchor to the heading that owns the section.
+    heading = target if _heading_level(target) is not None else None
+    if heading is None:
+        heading = target.find_parent(lambda t: _heading_level(t) is not None)
+    if heading is None:
+        heading = target.find_next(lambda t: _heading_level(t) is not None)
+    if heading is None:
+        return target
+    level = _heading_level(heading)
+    # Collect the section's nodes before moving any of them: appending to
+    # the wrapper detaches a node, which would break sibling traversal.
+    nodes = [heading]
+    for sib in heading.find_next_siblings():
+        sib_level = _heading_level(sib)
+        if sib_level is not None and sib_level <= level:
+            break
+        nodes.append(sib)
+    wrapper = soup.new_tag("div")
+    for node in nodes:
+        wrapper.append(node)
+    return wrapper
 
 
 def _to_markdown_fallback(root) -> str:

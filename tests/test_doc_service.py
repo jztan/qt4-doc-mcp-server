@@ -86,6 +86,84 @@ def test_section_only_not_cached(sample_settings: Settings) -> None:
     assert meta_path.exists()
 
 
+@pytest.fixture()
+def qt4_anchor_settings(tmp_path: Path) -> Settings:
+    """Fixture mimicking real Qt 4 HTML, which marks anchors with empty
+    <a name> tags before or inside headings instead of id attributes."""
+    html = """
+    <html>
+      <head><title>Anchor Title</title></head>
+      <body>
+        <div class="mainContent">
+          <h1>Anchor Title</h1>
+          <p>Intro paragraph.</p>
+          <a name="plain-section"></a>
+          <h2>Plain Section</h2>
+          <p>Plain section body text.</p>
+          <a name="other-section"></a>
+          <h2>Other Section</h2>
+          <p>Other section body.</p>
+          <h3 class="fn"><a name="connect"></a>connect()</h3>
+          <p>Connect function description.</p>
+          <h3 class="fn"><a name="disconnect"></a>disconnect()</h3>
+          <p>Disconnect function description.</p>
+        </div>
+      </body>
+    </html>
+    """
+    (tmp_path / "qanchor.html").write_text(html, encoding="utf-8")
+    settings = Settings(
+        qt_doc_base=tmp_path,
+        preindex_docs=False,
+        preconvert_md=False,
+        md_cache_size=4,
+    )
+    ensure_dirs(settings)
+    return settings
+
+
+def test_section_only_includes_section_body(sample_settings: Settings) -> None:
+    doc = get_markdown_for_path(
+        _document_path(),
+        sample_settings,
+        None,
+        fragment="#section",
+        section_only=True,
+    )
+    assert "Section Heading" in doc.markdown
+    assert "Section content" in doc.markdown
+
+
+def test_section_only_resolves_name_anchor_before_heading(
+    qt4_anchor_settings: Settings,
+) -> None:
+    doc = get_markdown_for_path(
+        "qanchor.md",
+        qt4_anchor_settings,
+        None,
+        fragment="#plain-section",
+        section_only=True,
+    )
+    assert "Plain Section" in doc.markdown
+    assert "Plain section body text" in doc.markdown
+    assert "Intro paragraph" not in doc.markdown
+    assert "Other section body" not in doc.markdown
+
+
+def test_section_only_resolves_name_anchor_inside_heading(
+    qt4_anchor_settings: Settings,
+) -> None:
+    doc = get_markdown_for_path(
+        "qanchor.md",
+        qt4_anchor_settings,
+        None,
+        fragment="#connect",
+        section_only=True,
+    )
+    assert "Connect function description" in doc.markdown
+    assert "Disconnect function description" not in doc.markdown
+
+
 def test_read_documentation_invalid_path_raises(sample_settings: Settings) -> None:
     configure_from_settings(sample_settings)
     with pytest.raises(ToolError) as exc_info:

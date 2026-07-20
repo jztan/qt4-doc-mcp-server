@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `HOST_PORT` variable to publish the compose service on a different host port
   when 8000 is taken (container port stays fixed)
 
+### Fixed
+- `read_documentation` with `section_only=true` returned empty content for all
+  Qt 4 fragments: the docs mark anchors with empty `<a name>` tags (before or
+  inside headings) which the slicer returned verbatim instead of resolving to
+  the owning heading's section; heading-based slicing also dropped the section
+  body by detaching the heading before collecting its siblings
+- Section responses now return only the links inside the sliced section
+  instead of misclassified full-page links
+
 ## [0.6.1] - 2026-07-19
 ### Fixed
 - Added the `mcp-name: io.github.jztan/qt4-doc-mcp-server` marker to the README
