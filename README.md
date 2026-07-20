@@ -102,6 +102,16 @@ docker run -d --name qt4-doc-mcp-server -p 8000:8000 \
 curl -s http://127.0.0.1:8000/health
 ```
 
+Using only the published image, without cloning this repo? Download the Qt 4.8.4 docs directly instead of running the prepare script:
+
+```bash
+curl -LO https://download.qt.io/archive/qt/4.8/4.8.4/qt-everywhere-opensource-src-4.8.4.tar.gz
+tar -xzf qt-everywhere-opensource-src-4.8.4.tar.gz qt-everywhere-opensource-src-4.8.4/doc/html
+mv qt-everywhere-opensource-src-4.8.4/doc/html ./qt4-docs-html
+```
+
+Any existing Qt 5 or Qt 6 `doc/html` tree (from the Qt installer or distro documentation packages) works as the mount source too.
+
 First start converts and indexes the documentation into the `/data` volume; subsequent starts reuse it. Depending on the docset size, the first start can take a minute or two before the health endpoint responds.
 
 ### Docker Compose
