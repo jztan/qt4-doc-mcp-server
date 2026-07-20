@@ -132,7 +132,7 @@ With docs in the default `./qt4-docs-html` location, no configuration is needed:
 docker compose up -d
 ```
 
-For docs elsewhere (including Qt 5 or Qt 6 `doc/html` trees, which the server also supports), point `QT_DOC_HTML_PATH` at them:
+For docs elsewhere (including Qt 5 or Qt 6 `doc/html` trees, which the server also supports), point `QT_DOC_HTML_PATH` at them. If port 8000 is taken on the host, set `HOST_PORT` in the same file (with plain `docker run`, change the left side of `-p` instead):
 
 ```bash
 cp .env.docker.example .env.docker   # set QT_DOC_HTML_PATH

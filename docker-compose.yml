@@ -6,7 +6,9 @@ services:
       dockerfile: Dockerfile
     container_name: qt4-doc-mcp-server
     ports:
-      - "8000:8000"
+      # HOST_PORT changes only the host side; the container always listens
+      # on 8000, so the healthchecks below stay valid
+      - "${HOST_PORT:-8000}:8000"
     env_file:
       - path: .env.docker
         required: false

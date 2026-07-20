@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   version tags only after PyPI publish succeeds
 - `deploy.sh` convenience script: preflight checks, `.env.docker` bootstrap,
   compose build/start, and health wait
+- `HOST_PORT` variable to publish the compose service on a different host port
+  when 8000 is taken (container port stays fixed)
 
 ## [0.6.1] - 2026-07-19
 ### Fixed
